@@ -1,2 +1,15 @@
 __pycache__/
 .pytest_cache/
+.venv/
+venv/
+
+# 本地账号与任务配置：里面有 sessionToken，只提交 *.example.json
+data/users.json
+data/tasks.json
+data/rotaoff.lock
+
+# 导出结果、图片
+output/
+
+# rotaeno 运行时的缓存存档
+rotaeno/saves/

@@ -1,0 +1,34 @@
+{
+    "profile": "default",
+    "output": {
+        "dir": "output",
+        "image": false,
+        "export": [],
+        "template": "{type}-{stamp}",
+        "latest": ""
+    },
+    "schedule": {
+        "interval": 0
+    },
+    "tasks": [
+        {
+            "name": "我的 B40",
+            "type": "b40",
+            "profile": "default"
+        },
+        {
+            "name": "账号概览",
+            "type": "custom",
+            "profile": "default",
+            "fields": ["username", "rating", "level", "completion"]
+        },
+        {
+            "name": "13 以上曲目",
+            "type": "song_rtr",
+            "profile": "default",
+            "level_min": 13.0,
+            "sort": "rating",
+            "limit": 20
+        }
+    ]
+}

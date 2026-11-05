@@ -1,12 +1,14 @@
-# requirements.txt
-simcord[pytest,preview]
+# rotaeno/ 在 import 阶段就会执行 rotaeno/utils.py 里的
+# `from playwright.sync_api import sync_playwright` 与 `from PIL import Image`，
+# 所以这几项是硬依赖；只有“生成图片”这一功能需要额外下载 chromium 内核。
 requests
-qrcode
 urllib3
 msgpack
-sqlalchemy
 pydantic
+sqlalchemy
 thefuzz
+qrcode
+Pillow
 playwright
-pytest-asyncio
-tzdata; sys_platform == 'win32'
+filelock
+tzdata; sys_platform == "win32"

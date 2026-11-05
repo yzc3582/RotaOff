@@ -1,0 +1,121 @@
+# RotaOff — all-in-one English reference
+
+**Language**：[简体中文](README.zh_CN.md) · [English](README.md) · this page
+
+The Python entry points print Chinese by default, because the project (and its upstream `rotaeno/` package) is Chinese-first. Everything a user sees is listed here in English. Program messages can also be switched at runtime:
+
+```bat
+.venv\Scripts\python tui.py
+rotaoff> profile set locale en-US
+```
+
+That makes `rotaoff/i18n.py` read `data/i18n/en-US.json`; any key missing there falls back to `zh-CN`, then to the raw key.
+
+## `run_tasks.py` options
+
+```
+usage: run_tasks.py [-h] [--list] [--task SPEC] [--filter EXPR] [--dry-run]
+                    [--interval SECONDS] [--save FORMATS] [--image]
+                    [--no-image] [--quiet] [--force]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--list` | print the saved tasks and exit |
+| `--task SPEC` | select tasks: `1,3` (indices), `4-6` / `7~9` (closed interval, both ends included), `all` / `*`, or a name substring. Repeatable |
+| `--filter EXPR` | narrow the current selection, repeatable, e.g. `"i % 2 == 0"` |
+| `--dry-run` | print which tasks would run, execute nothing |
+| `--interval SECONDS` | loop interval; omitted = `schedule.interval` from the config, `0` = run once |
+| `--save FORMATS` | override export formats, e.g. `txt,md,csv,json` |
+| `--image` | force image rendering on |
+| `--no-image` | force image rendering off |
+| `--quiet` | report results only, no tables |
+| `--force` | ignore `data/rotaoff.lock` (only when you are sure the other instance is gone) |
+
+Selection rules: the initial set is every task; each `--task` starts a new segment, `--filter` narrows only the current segment, and all segments are unioned at the end. See [filter.en_US.md](filter.en_US.md).
+
+## `tui.py` commands
+
+Account:
+
+| Command | Meaning |
+| --- | --- |
+| `profile` | show every profile and which one is active |
+| `profile use <name>` | switch the active profile |
+| `profile new <name>` | create a profile |
+| `profile set server cn\|global` | set the server |
+| `profile set objectid <ID>` | set `objectID` |
+| `profile set session <TOKEN>` | set `sessionToken` |
+| `login [cn\|global]` | scan the TapTap QR code and fill in the three settings above |
+
+Queries (results are printed unless `output` export is enabled):
+
+| Command | Meaning |
+| --- | --- |
+| `b40` | Best40 table |
+| `song <title or alias>` | per-difficulty rating of one song |
+| `status [FC\|AP\|APP\|CLEAR\|...]` | list charts by play status |
+| `rtr <min> <max> [sort]` | level range; sort = `rating` / `score` / `level` |
+| `custom [fields...]` | custom fields, e.g. `custom username rating level completion` |
+
+Tasks (stored in `data/tasks.json`, can be run by `run_tasks.py`):
+
+| Command | Meaning |
+| --- | --- |
+| `tasks` | list tasks |
+| `task add` | guided task creation |
+| `task rm <index>` | delete a task |
+| `task run [index\|all]` | run tasks |
+
+Output:
+
+| Command | Meaning |
+| --- | --- |
+| `output` | show output settings |
+| `output set export txt,md` | default export formats (empty = print only) |
+| `output set template <tmpl>` | filename template; `{type}` `{name}` `{profile}` `{stamp}` |
+| `output set latest <tmpl>` | extra copy under a fixed name, handy for OBS |
+| `output set dir <dir>` | output directory |
+| `output set image on\|off` | render images (default `off`) |
+
+Other:
+
+| Command | Meaning |
+| --- | --- |
+| `interval <seconds>` | save the automation loop interval, `0` = run once |
+| `help` / `quit` | — |
+
+## Task wizard prompts (`task add`)
+
+| Prompt | Notes |
+| --- | --- |
+| Task type (`custom` / `b40` / `song_info` / `song_status` / `song_rtr`) | default `custom` |
+| Fields (comma separated, one of `username`, `rating`, `level`, `exp`, `completion`, `app`, `ap`, `fc`, `charts`, `playtime`, `b40`) | `custom` only, default `rating` |
+| Line template (`{label}` / `{value}`, empty = `{label}: {value}`) | `custom` only |
+| Song title or alias | `song_info` only |
+| Status (`NONE` / `FC` / `AP` / `APP` / `CLEAR` / `NOTCLEAR` / `FAVORITE` / `NOTFAVORITE`) | `song_status` only, default `FC` |
+| Level min / max / sort | `song_rtr` only, defaults `14.0` / `15.0` / `rating` |
+| Task name | default = song alias or type |
+| Export formats (`txt` / `md` / `csv` / `json`, comma separated, empty = print only) | |
+| Filename template | `{type}` `{name}` `{profile}` `{stamp}` |
+| Render an image as well? (y/N) | default no |
+| Fail when a level (diff) is missing? (y/N) | default no; `strict` per task |
+
+## Runtime messages
+
+| Situation | English meaning |
+| --- | --- |
+| `已有 RotaOff 在运行: …` | another RotaOff instance holds `data/rotaoff.lock`; the holder role / pid / start time follows. The OS releases the lock when that process exits; `--force` skips the lock |
+| `没有任务被选中，检查 --task / --filter 的写法。` | nothing matched the selection; check `--task` / `--filter` (exit code 1) |
+| `任务序号越界: 9（共 3 个）` | task index out of range |
+| `data/tasks.json 里没有任务，先运行 python tui.py 配置。` | no tasks configured yet |
+| `已选中 N 个任务：` | `--dry-run` selected N tasks, listed below |
+| `已跳过 N 张缺少定数的谱面: …（不会用 0 代替）` | N charts had no level (diff) and were excluded from rating, never counted as 0 |
+| `有 N 张谱面缺少定数: …` | same case, but the task had `"strict": true`, so it aborts |
+| `图片渲染已跳过（…）` | image rendering failed or chromium is missing; text output is unaffected |
+| `未知字段: …` / `未知任务类型: …` / `未知输出设置: …` | unknown custom field / task type / output setting |
+| `找不到歌曲: …` / `没有这首歌的成绩: …` | song alias not found / no score data for this song |
+| `已有 RotaOff 在运行` | (see the first row) |
+| `再见，记得休息一下眼睛。` | goodbye |
+
+Exit codes: `0` success, `1` error or nothing selected, `130` interrupted with Ctrl+C.
