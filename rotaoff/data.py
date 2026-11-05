@@ -6,6 +6,8 @@
 - rotaeno.database.song_data                            定数与谱面总数
 """
 
+import json
+
 import requests
 
 import rotaeno
@@ -56,22 +58,43 @@ def suggest_song_aliases(song_alias: str, limit: int = 10) -> list:
     return []
 
 
-def _probe_response(api) -> str:
-    """出错时补一次原始请求，把状态码和响应体开头带出来。
+def _probe_response(api, profile: dict) -> str:
+    """出错时补发几条原始请求做对照，只报告状态码和结构，不打印存档内容。
 
-    rotaeno 里的 BaseAPI 直接 `.json()`，服务器返回空/HTML 时只会抛
-    JSONDecodeError，看不到到底发生了什么，所以这里单独补一条诊断线索。
+    rotaeno 里的 BaseAPI 直接 `.json()`，服务器返回空串时只剩一句
+    JSONDecodeError；这里把「双斜杠 / 单斜杠 / 有没有 where」几种可能一起试掉。
     """
-    url = f"{api.base_url}/1.1/users/me"
-    try:
-        response = requests.get(
-            url, headers=api._build_headers(), allow_redirects=True,
-            proxies=api.proxies, timeout=10, verify=False,
-        )
-    except Exception as exc:                       # 网络层错误也要看得见
-        return f"{url} → {type(exc).__name__}: {exc}"
-    body = " ".join((response.text or "").split())[:200]
-    return f"{url} → HTTP {response.status_code} | {body or '(空响应体)'}"
+    object_id = (profile or {}).get("objectID", "")
+    where = json.dumps({
+        "user": {"__type": "Pointer", "className": "_User", "objectId": object_id}
+    })
+    cases = (
+        ("双斜杠+where", f"{api.base_url}//1.1/classes/CloudSave", {"where": where}),
+        ("单斜杠+where", f"{api.base_url}/1.1/classes/CloudSave", {"where": where}),
+        ("单斜杠+limit", f"{api.base_url}/1.1/classes/CloudSave", {"limit": 1}),
+        ("users/me 对照", f"{api.base_url}/1.1/users/me", None),
+    )
+    lines = []
+    for label, url, params in cases:
+        try:
+            response = requests.get(
+                url, headers=api._build_headers(), params=params,
+                allow_redirects=True, proxies=api.proxies, timeout=10, verify=False,
+            )
+        except Exception as exc:                   # 网络层错误也要看得见
+            lines.append(f"  {label}: {type(exc).__name__}: {exc}")
+            continue
+        text = (response.text or "").strip()
+        try:
+            body = json.loads(text)
+        except ValueError:
+            head = " ".join(text.split())[:60] or "(空响应体)"
+            lines.append(f"  {label}: HTTP {response.status_code} 非 JSON | {head}")
+            continue
+        results = body.get("results")
+        shape = f"results={len(results)}" if isinstance(results, list) else "无 results"
+        lines.append(f"  {label}: HTTP {response.status_code} | {shape} | keys={list(body)}")
+    return "\n".join(lines)
 
 
 def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dict:
@@ -88,7 +111,7 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
     except ValueError as exc:                       # 含 requests 的 JSONDecodeError
         raise RotaOffError(
             f"服务器返回的不是 JSON（{type(exc).__name__}: {exc}）\n"
-            f"诊断: {_probe_response(api)}"
+            f"诊断:\n{_probe_response(api, profile)}"
         )
 
 
