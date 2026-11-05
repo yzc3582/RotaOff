@@ -126,7 +126,7 @@ When adding strings you only have to edit `zh-CN.json`; keys missing from `en-US
 
 ## The song library (this is what makes Rating correct)
 
-`rotaeno/database/song_data.db` ships with the upstream repo and **stopped at 2.9.0 with 307 songs**. Your client is at 2.99.0 and your save has 436 songs — the 129 missing songs (538 charts) have no `num` (chart constant), so upstream counts them as 0 rating and the total is dragged down (measured 14.5859 vs. a real 14.6931).
+`rotaeno/database/song_data.db` ships with the upstream repo and **stopped at 2.9.0 with 307 songs**. Client on test is at 2.99.0 and its save has 436 songs — the 129 missing songs (538 charts) have no `num` (chart constant), so upstream counts them as 0 rating and the total is dragged down (measured 14.5859 vs. a real 14.6931).
 
 This project **never modifies or reads that .db**. On startup `rotaoff/library.py` swaps the `song_data` instance at runtime for a database rebuilt from fresh data. In other words `rotaeno/database/song_data.db` is now a **dead file**: it stays only because upstream code calls `songData(path)`, and you can ignore it (deleting it is fine as long as `Songlist.json` or `data/song_data.db` exists).
 

@@ -126,7 +126,7 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
 
 ## 曲库（Rating 算得准不准全看这里）
 
-`rotaeno/database/song_data.db` 是上游随仓库带的库，**停更在 2.9.0，只有 307 首**。你的客户端是 2.99.0，存档里有 436 首 —— 差的 129 首、538 个谱面没有定数（`num`），上游会直接按 0 分算进 Rating，于是 Rating 会被系统性压低（实测 14.5859，真实 14.6931）。
+`rotaeno/database/song_data.db` 是上游随仓库带的库，**停更在 2.9.0，只有 307 首**。测试用的客户端是 2.99.0，存档里有 436 首 —— 差的 129 首、538 个谱面没有定数（`num`），上游会直接按 0 分算进 Rating，于是 Rating 会被系统性压低（实测 14.5859，真实 14.6931）。
 
 本项目**不改 `rotaeno/` 里那份 .db**，也不读它：启动时由 `rotaoff/library.py` 在**运行期**把 `song_data` 实例换成用新数据重建的库。也就是说 `rotaeno/database/song_data.db` 现在是**死文件**，留着只为兼容上游代码里的 `songData(path)` 签名，你完全可以不管它（删掉也行，只要 `Songlist.json` 或 `data/song_data.db` 在）。
 
