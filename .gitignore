@@ -7,6 +7,7 @@ venv/
 data/users.json
 data/tasks.json
 data/rotaoff.lock
+data/rotaoff.lock.info
 
 # 导出结果、图片
 output/
