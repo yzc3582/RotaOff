@@ -122,8 +122,10 @@ def cmd_profile(args) -> None:
     if action == "set" and len(args) >= 3:
         key, value = args[1].lower(), " ".join(args[2:])
         verified, message_key = store.set_profile_field(key, value)
-        message = t(message_key, store.profile_locale())
-        ui.ok(message) if verified else ui.warn(message)
+        if verified:
+            ui.ok(f"已保存: {key} = {value}")
+        else:
+            ui.warn(t(message_key, store.profile_locale()))
         return
     ui.warn("用法: profile | profile use <名> | profile new <名> | profile set <字段> <值>")
 

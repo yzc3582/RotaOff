@@ -6,9 +6,11 @@
 - rotaeno.database.song_data                            定数与谱面总数
 """
 
+import requests
+
 import rotaeno
 
-from .store import require_ready_profile
+from .store import RotaOffError, require_ready_profile
 
 NO_DATA = "【无数据】"          # 只兜底展示性字段；定数缺失的谱面不会进结果
 
@@ -54,6 +56,24 @@ def suggest_song_aliases(song_alias: str, limit: int = 10) -> list:
     return []
 
 
+def _probe_response(api) -> str:
+    """出错时补一次原始请求，把状态码和响应体开头带出来。
+
+    rotaeno 里的 BaseAPI 直接 `.json()`，服务器返回空/HTML 时只会抛
+    JSONDecodeError，看不到到底发生了什么，所以这里单独补一条诊断线索。
+    """
+    url = f"{api.base_url}/1.1/users/me"
+    try:
+        response = requests.get(
+            url, headers=api._build_headers(), allow_redirects=True,
+            proxies=api.proxies, timeout=10, verify=False,
+        )
+    except Exception as exc:                       # 网络层错误也要看得见
+        return f"{url} → {type(exc).__name__}: {exc}"
+    body = " ".join((response.text or "").split())[:200]
+    return f"{url} → HTTP {response.status_code} | {body or '(空响应体)'}"
+
+
 def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dict:
     """一次请求拿到 playerInfo + songDatas。"""
     profile = require_ready_profile(profile_name)
@@ -63,7 +83,13 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
         else rotaeno.api.taptap.ServerRegion.GLOBAL
     )
     api = rotaeno.api.taptap_processor.TapTapAPI(region=region, user_profile=profile)
-    return api.get_cloud_save(add_to_database=record_history)
+    try:
+        return api.get_cloud_save(add_to_database=record_history)
+    except ValueError as exc:                       # 含 requests 的 JSONDecodeError
+        raise RotaOffError(
+            f"服务器返回的不是 JSON（{type(exc).__name__}: {exc}）\n"
+            f"诊断: {_probe_response(api)}"
+        )
 
 
 def best40_from(snapshot: dict, limit: int = 40) -> list:

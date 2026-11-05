@@ -44,6 +44,8 @@ class _SelectAction(argparse.Action):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="RotaOff 自动化任务执行器（无交互）",
+        # 默认的 HelpFormatter 会把 epilog 折成一段，换行全被吃掉；这里保留原样
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="选择规则：初始集合是全部任务；每遇到一个 --task 就开新段，"
                "--filter 只作用于当前段，最后取各段并集。详见 filter.zh_CN.md\n"
                "English users: see py-all-in-one.en_US.md in the repository root.",
