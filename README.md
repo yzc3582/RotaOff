@@ -1,10 +1,8 @@
 # RotaOff
 
-基于 [None1145/RotaBot](https://github.com/None1145/RotaBot) 的离线查数值工具（用于直播展示Rating）
+基于 [None1145/RotaBot](https://github.com/None1145/RotaBot) 的离线查数值工具（用于直播展示 Rating）
 
-
-
-
+又是一个 Vibe Coding 项目……
 
 ## 📜 开源协议
 
