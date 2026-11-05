@@ -1,4 +1,5 @@
 @echo off
+chcp 65001
 REM 一键建虚拟环境 + 装依赖。用法：
 REM   install_env.bat            连 chromium 内核一起装（能出图片）
 REM   install_env.bat nobrowser  只装 Python 依赖（只出文本）

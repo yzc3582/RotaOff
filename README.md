@@ -61,6 +61,7 @@ Three steps:
 | `custom [fields...]` | custom fields, e.g. `custom username rating level` |
 | `tasks` / `task add` / `task rm <index>` / `task run [selection]` | task management |
 | `output` / `output set <key> <value>` | output settings (dir, export formats, filename template, image toggle) |
+| `library` / `library update [--local]` / `library source <path>` | song library: inspect, rebuild online or offline, repoint the source |
 | `interval <seconds>` | automation interval, 0 = run once |
 | `save` | export the current result immediately |
 | `help` / `quit` | — |
@@ -122,6 +123,37 @@ Lookup in `rotaoff/i18n.py` falls back step by step, so a missing line never cra
 Placeholders use the `{name}` form: `t("task-added", name="B40")`. If the passed arguments do not match, the unformatted text is returned instead of raising.
 
 When adding strings you only have to edit `zh-CN.json`; keys missing from `en-US` fall back to Chinese. To translate one, add the same key to `en-US.json`.
+
+## The song library (this is what makes Rating correct)
+
+`rotaeno/database/song_data.db` ships with the upstream repo and **stopped at 2.9.0 with 307 songs**. Your client is at 2.99.0 and your save has 436 songs — the 129 missing songs (538 charts) have no `num` (chart constant), so upstream counts them as 0 rating and the total is dragged down (measured 14.5859 vs. a real 14.6931).
+
+This project **never modifies or reads that .db**. On startup `rotaoff/library.py` swaps the `song_data` instance at runtime for a database rebuilt from fresh data. In other words `rotaeno/database/song_data.db` is now a **dead file**: it stays only because upstream code calls `songData(path)`, and you can ignore it (deleting it is fine as long as `Songlist.json` or `data/song_data.db` exists).
+
+The data comes from the wiki's `Template:Songlist.json` — the very same template RotaBot originally built its db from. It carries song id, title, artist, duration, release version and the constant of every difficulty, IV-α included (`ratingClass: 200`).
+
+```bat
+library                       :: which library is in use, how many songs / charts
+library update                :: fetch the latest Songlist.json and rebuild data/song_data.db
+library update --local        :: use only the local Songlist.json (offline)
+library source D:\some\Songlist.json  :: point at a local file
+```
+
+Three layers of fallback — if one fails, the next one still works:
+
+1. `library update` first tries `https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw` automatically. That site is behind Anubis (a proof-of-work gate); the program solves the hash itself, usually in a few seconds.
+2. If fetching fails (no network, site changed, difficulty cranked up) it **falls back to a local file**: `Songlist.json` in the repo root, or whatever `library source` points at. So you always want at least one way to obtain that json.
+3. With no local file either, it **falls back to the upstream old db** and warns in `library` that charts without a constant cannot be rated.
+
+To keep layer 2 permanently available, grab a copy by hand:
+
+1. Open <https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw> in a browser
+2. Select all, copy, paste into `Songlist.json` (UTF-8, no BOM)
+3. `library update --local`
+
+> Jackets and note counts are not needed — Rating / B40 only use id, constant and score. This json is therefore the **minimal sufficient dataset** for correct Rating.
+
+The rebuilt library lands in `data/song_data.db` (same schema as upstream: `songs` + `song_levels`); after the first build every start reads it directly and never touches the network. If `data/` is not writable the program degrades to an **in-memory library** (works for this session, must be rebuilt next time) and says so loudly.
 
 ## One instance at a time
 

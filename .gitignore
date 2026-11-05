@@ -14,3 +14,6 @@ output/
 
 # rotaeno 运行时的缓存存档
 rotaeno/saves/
+
+# 部分数据库
+[sS]onglist.json

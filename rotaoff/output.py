@@ -153,9 +153,19 @@ def save_image(path: str, prefix: str, out_dir: str = "") -> str:
 
 
 def try_render_image(render, prefix: str, *args, **kwargs) -> str:
-    """调用可选的图片渲染函数；任何失败都只警告，不影响文本输出。"""
+    """调用可选的图片渲染函数；任何失败都只警告，不影响文本输出。
+
+    上游的临时目录 / 存档目录已经被 `patch.redirect_upstream_dirs()` 指到 data/ 下，
+    这里再兜一次，避免用户在旧版本升级后仍然指向只读的安装目录。
+    """
+    from . import patch
+
+    patch.redirect_upstream_dirs()
     try:
         return save_image(render(*args, **kwargs), prefix, kwargs.get("out_dir", ""))
     except Exception as exc:                      # noqa: BLE001 - 刻意兜底
-        ui.warn(f"图片渲染已跳过（{type(exc).__name__}: {exc}）")
+        hint = ""
+        if isinstance(exc, (FileNotFoundError, PermissionError)):
+            hint = "；图片需要 playwright 的 chromium 内核与可写的 data/ 目录"
+        ui.warn(f"图片渲染已跳过（{type(exc).__name__}: {exc}）{hint}")
         return ""

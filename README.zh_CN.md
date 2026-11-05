@@ -61,6 +61,7 @@ python -m venv .venv
 | `custom [字段...]` | 自定义字段，如 `custom username rating level` |
 | `tasks` / `task add` / `task rm <序号>` / `task run [选择]` | 任务管理 |
 | `output` / `output set <项> <值>` | 输出设置（目录、导出格式、文件名模板、图片开关） |
+| `library` / `library update [--local]` / `library source <路径>` | 曲库：看用的哪份、联网或离线重建、换源 |
 | `interval <秒>` | 自动化间隔，0 = 只跑一次 |
 | `save` | 立刻导出当前结果 |
 | `help` / `quit` | —— |
@@ -122,6 +123,37 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
 占位符用 `{name}` 这种写法，取值时用 `t("task-added", name="B40")`；万一传的参数对不上，会退回未格式化的原句，不会抛异常。
 
 加新文案时只需要写 `zh-CN.json`，`en-US` 缺的键会自动回退成中文；想补英文照同样 key 加一条即可。
+
+## 曲库（Rating 算得准不准全看这里）
+
+`rotaeno/database/song_data.db` 是上游随仓库带的库，**停更在 2.9.0，只有 307 首**。你的客户端是 2.99.0，存档里有 436 首 —— 差的 129 首、538 个谱面没有定数（`num`），上游会直接按 0 分算进 Rating，于是 Rating 会被系统性压低（实测 14.5859，真实 14.6931）。
+
+本项目**不改 `rotaeno/` 里那份 .db**，也不读它：启动时由 `rotaoff/library.py` 在**运行期**把 `song_data` 实例换成用新数据重建的库。也就是说 `rotaeno/database/song_data.db` 现在是**死文件**，留着只为兼容上游代码里的 `songData(path)` 签名，你完全可以不管它（删掉也行，只要 `Songlist.json` 或 `data/song_data.db` 在）。
+
+数据来源是 wiki 的 `Template:Songlist.json`（和 RotaBot 当初造 db 用的是同一份模板），包含曲目 id、曲名、曲师、时长、上架版本，以及全部难度的定数（含 IV-α，`ratingClass: 200`）。
+
+```bat
+library                       :: 现在用的是哪份库、多少首、多少谱面
+library update                :: 联网抓最新 Songlist.json 并重建 data/song_data.db
+library update --local        :: 只用仓库根目录的 Songlist.json（不联网）
+library source D:\some\Songlist.json  :: 指定本地文件位置
+```
+
+三层回退，任何一层挂了都还有下层：
+
+1. `library update` 先试着从 `https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw` 自动抓。该站有 Anubis 反爬（工作量证明），程序会自己算 hash 过验证，一般几秒内完成。
+2. 抓不到（网络不通、站点改版、难度调到算不出来）→ **回退到本地**：根目录的 `Songlist.json`，或 `library source` 指定的路径。所以你必须至少有一种拿到这个 json 的方式。
+3. 连本地文件都没有 → **回退到上游旧库**，并在 `library` 里警告「缺定数的谱面算不出 Rating」。
+
+想让第 2 步永远可用，手动拿一份就行：
+
+1. 浏览器打开 <https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw>
+2. 全选复制，粘到 `Songlist.json`（UTF-8，不要 BOM）
+3. `library update --local`
+
+> 曲绘、谱面物量都不需要 —— Rating / B40 只用到 id、定数与分数。所以这个 json 是「能算对 Rating」的**最小充分数据**。
+
+重建出来的库落在 `data/song_data.db`（与上游同 schema：`songs` + `song_levels`），第一次之后每次启动直接读它，不再联网。`data/` 不可写时程序会自动退化为**内存曲库**（本次会话照常能算，重启要重来），并明确警告。
 
 ## 同时只能开一个
 

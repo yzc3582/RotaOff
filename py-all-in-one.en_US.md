@@ -82,8 +82,15 @@ Other:
 
 | Command | Meaning |
 | --- | --- |
+| `library` | which song library is in use, songs / charts / IV-α / latest version |
+| `library update` | fetch `Template:Songlist.json` from the wiki (solves the Anubis proof-of-work) and rebuild `data/song_data.db` |
+| `library update --local` | rebuild from the local `Songlist.json` only (offline) |
+| `library source <path>` | point at another `Songlist.json` |
 | `interval <seconds>` | save the automation loop interval, `0` = run once |
 | `help` / `quit` | — |
+
+> `library update` falls back in three steps: online fetch → local `Songlist.json` → the stale upstream db (with a warning that charts without a chart constant cannot be rated). Grab the json by hand from
+> <https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw> if fetching fails.
 
 ## Task wizard prompts (`task add`)
 

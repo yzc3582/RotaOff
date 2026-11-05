@@ -44,6 +44,22 @@ def _check_diff(song_datas: list, task: dict, locale: str) -> list:
     return [item for item in song_datas if item.get("diff")]
 
 
+def _profile_name(task: dict) -> str:
+    """任务里存的配置名；如果那个配置已经被删/改名，回退到当前配置并提示一句。
+
+    任务是在建任务那一刻把 profile 名字写死的，所以 `profile new/use` 换档之后，
+    老任务会指向一个不存在的名字。这里不静默失败，也不让整条任务挂掉。
+    """
+    name = task.get("profile") or active_profile_name()
+    if name in load_users():
+        return name
+    fallback = active_profile_name()
+    if fallback in load_users():
+        ui.warn(f"任务里的配置 `{name}` 已不存在，改用当前配置 `{fallback}`")
+        return fallback
+    raise RotaOffError(t("profile-not-found", profile=name))
+
+
 def _ranked(snapshot: dict, task: dict, locale: str) -> list:
     song_datas = _check_diff(snapshot.get("songDatas") or [], task, locale)
     limit = int(task.get("limit", 40))
@@ -52,14 +68,14 @@ def _ranked(snapshot: dict, task: dict, locale: str) -> list:
 
 def _task_custom(task: dict, render_image: bool) -> dict:
     """自定义字段：username / rating / level / completion / b40 ..."""
-    profile_name = task.get("profile") or active_profile_name()
+    profile_name = _profile_name(task)
     locale = profile_locale(profile_name)
     snapshot = data.fetch_snapshot(
         profile_name, record_history=bool(task.get("record_history", False))
     )
     metrics = data.metrics_from(snapshot)
 
-    fields = [str(field).lower() for field in task.get("fields") or ["rating"]]
+    fields = list(dict.fromkeys(str(field).lower() for field in task.get("fields") or ["rating"]))
     unknown = [field for field in fields if field not in metrics and field != "b40"]
     if unknown:
         raise RotaOffError(t("custom-field-unknown", locale, field=", ".join(unknown)))
@@ -105,9 +121,11 @@ def _task_custom(task: dict, render_image: bool) -> dict:
 
 
 def _task_b40(task: dict, render_image: bool) -> dict:
-    profile_name = task.get("profile") or active_profile_name()
+    profile_name = _profile_name(task)
     locale = profile_locale(profile_name)
-    snapshot = data.fetch_snapshot(profile_name)
+    snapshot = data.fetch_snapshot(
+        profile_name, record_history=bool(task.get("record_history", False))
+    )
 
     image = ""
     if render_image:
@@ -128,7 +146,7 @@ def _task_b40(task: dict, render_image: bool) -> dict:
 
 
 def _task_song_info(task: dict, render_image: bool) -> dict:
-    profile_name = task.get("profile") or active_profile_name()
+    profile_name = _profile_name(task)
     locale = profile_locale(profile_name)
     alias = str(task.get("song_alias") or "").strip()
     if not alias:
@@ -176,7 +194,7 @@ def _task_song_info(task: dict, render_image: bool) -> dict:
 
 
 def _task_song_status(task: dict, render_image: bool) -> dict:
-    profile_name = task.get("profile") or active_profile_name()
+    profile_name = _profile_name(task)
     locale = profile_locale(profile_name)
     status = str(task.get("status") or "FC").upper()
     if status not in SONG_STATUSES:
@@ -216,7 +234,7 @@ def _task_song_status(task: dict, render_image: bool) -> dict:
 
 
 def _task_song_rtr(task: dict, render_image: bool) -> dict:
-    profile_name = task.get("profile") or active_profile_name()
+    profile_name = _profile_name(task)
     locale = profile_locale(profile_name)
     try:
         low = float(task.get("level_min", 12.5))
@@ -271,7 +289,6 @@ def _task_song_rtr(task: dict, render_image: bool) -> dict:
 
 
 # ---------------------------------------------------------------- 任务注册与校验
-
 TASK_BUILDERS = {
     "custom": _task_custom,
     "b40": _task_b40,
@@ -311,7 +328,7 @@ def build_task(kind: str, name: str = "", profile: str = "", **fields) -> dict:
         unknown = [item for item in picked if item not in data.CUSTOM_LABELS]
         if unknown:
             raise RotaOffError(t("custom-field-unknown", field=", ".join(unknown)))
-        task["fields"] = picked
+        task["fields"] = list(dict.fromkeys(picked))   # 去重但保留顺序
         if fields.get("layout"):
             task["layout"] = str(fields["layout"])
     elif kind == "song_info":
@@ -390,7 +407,13 @@ def run_task(task: dict, render_image: bool = None, formats=None) -> dict:
         task_settings["export"] = task["export"]
     if task.get("template"):
         task_settings["template"] = task["template"]
-    result["files"] = output.export_result(result, formats, task_settings)
+    try:
+        result["files"] = output.export_result(result, formats, task_settings)
+    except OSError as exc:
+        # 导出失败不该毁掉结果本身：表格照常打印，只提示写不进去
+        result["files"] = []
+        result["export_error"] = str(exc)
+        ui.warn(f"导出失败，结果只在终端显示: {exc}")
     return result
 
 

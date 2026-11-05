@@ -8,11 +8,11 @@ import os
 import shlex
 import sys
 
-from rotaoff import data, lock, output, select, store, tasks, ui
+from rotaoff import data, library, lock, output, select, store, tasks, ui
 from rotaoff.i18n import t
 from rotaoff.store import RotaOffError
 
-HELP = """
+HELP_ZH = """
 账号
   profile                     查看所有配置与当前配置
   profile use <名称>          切换当前配置
@@ -44,9 +44,62 @@ HELP = """
   output set image on|off     是否生成图片（默认 off）
 
 其它
+  library                     查看当前用的是哪份曲库
+  library update              从 wiki 抓最新 Songlist.json 并重建 data/song_data.db
+  library update --local      只用仓库根目录的 Songlist.json（不联网）
+  library source [路径]       指定 Songlist.json 的位置
   interval <秒>               保存自动化循环间隔，0 = 只跑一次
   help / quit
 """.strip()
+
+HELP_EN = """
+Account
+  profile                     show every profile and the active one
+  profile use <name>          switch the active profile
+  profile new <name>          create a profile
+  profile set server cn|global      set the server
+  profile set objectid <ID>         set objectID
+  profile set session <TOKEN>       set sessionToken
+  login [cn|global]           scan the TapTap QR code and fill the three fields above
+
+Queries (printed in the terminal unless output export is enabled)
+  b40                         Best40 table
+  song <title or alias>       rating of every difficulty of one song
+  status [FC|AP|APP|CLEAR|...] list charts by play status
+  rtr <min> <max> [sort]      level range; sort = rating/score/level
+  custom [fields...]          custom fields, e.g. custom username rating level completion
+
+Tasks (stored in data/tasks.json, can also run by run_tasks.py)
+  tasks                       list tasks
+  task add                    guided task creation
+  task rm <index>             delete a task
+  task run [index|all]        run tasks
+  tasks run [index|all]       same as above
+
+Output
+  output                      show output settings
+  output set export txt,md    default export formats (empty = print only)
+  output set template <tmpl>  filename template; {type} {name} {profile} {stamp}
+  output set latest <tmpl>    extra fixed-name copy, handy for OBS
+  output set dir <dir>        output directory
+  output set image on|off     render images (default off)
+
+Other
+  library                     show which song library is in use
+  library update              fetch the latest Songlist.json from the wiki and rebuild data/song_data.db
+  library update --local      use only the local Songlist.json (no network)
+  library source [path]       point at a different Songlist.json
+  interval <seconds>          save the automation loop interval, 0 = run once
+  help / quit
+""".strip()
+
+HELP_BY_LOCALE = {"zh-CN": HELP_ZH, "en-US": HELP_EN}
+
+
+def help_text() -> str:
+    """按当前配置的语言给出帮助；没有对应语言就回退中文。"""
+    return HELP_BY_LOCALE.get(store.profile_locale(), HELP_ZH)
+
 
 
 # ---------------------------------------------------------------- 小工具
@@ -198,12 +251,29 @@ def cmd_custom(args) -> None:
 # ---------------------------------------------------------------- 任务
 
 def cmd_tasks(args) -> None:
+    """`tasks` 列表；`tasks run ...` 是 `task run ...` 的别名（很多人会顺手写复数）。"""
+    if args and args[0].lower() in ("run", "rm", "del", "delete", "add"):
+        cmd_task(args)
+        return
     items = store.load_tasks()
     if not items:
         ui.info("还没有任务，输入 task add 创建一个。")
         return
     for index, task in enumerate(items, 1):
         print(tasks.describe_task(task, index))
+
+
+def _run_selected(items: list, selected: str) -> None:
+    """执行选中的任务：序号 / all / 1,3 / 4-6 / 名字，与 run_tasks.py 同一套选择规则。"""
+    if selected != "all":
+        items = [item for _, item in select.parse_spec(selected, items)]
+    for result in tasks.run_tasks(items):
+        if result.get("ok"):
+            ui.render_result(result)
+            for path in result.get("files", []):
+                ui.ok(f"已写入: {path}")
+        else:
+            ui.error(f'{result["name"]}: {result["error"]}')
 
 
 def cmd_task(args) -> None:
@@ -225,19 +295,7 @@ def cmd_task(args) -> None:
 
     if action == "run":
         selected = args[1] if len(args) > 1 else "all"
-        items = store.load_tasks()
-        if selected != "all":
-            index = int(selected)
-            if not 1 <= index <= len(items):
-                raise RotaOffError(t("task-not-found", task=selected))
-            items = [items[index - 1]]
-        for result in tasks.run_tasks(items):
-            if result.get("ok"):
-                ui.render_result(result)
-                for path in result.get("files", []):
-                    ui.ok(f"已写入: {path}")
-            else:
-                ui.error(f'{result["name"]}: {result["error"]}')
+        _run_selected(store.load_tasks(), selected)
         return
 
     cmd_tasks([])
@@ -324,6 +382,57 @@ def cmd_output(args) -> None:
     ui.warn("用法: output | output set <键> <值> | output export txt,md")
 
 
+def cmd_library(args) -> None:
+    """曲库：看现在用的哪份、更新、换源。"""
+    import json as _json
+
+    if not args or args[0] in ("show", "list", "status"):
+        status = library.status()
+        ui.table(
+            ["项", "值"],
+            [
+                ["当前来源", status["source"]],
+                ["曲目数", status.get("songs", "-")],
+                ["谱面数", status.get("charts", "-")],
+                ["IV-α 曲目", status.get("iv_alpha", "-")],
+                ["最新版本", status.get("latest_release") or "-"],
+                ["曲库文件", status.get("path") or "(未落盘)"],
+                ["Songlist 源", status.get("source_json") or "(无)"],
+            ],
+        )
+        if status.get("warning"):
+            ui.warn(status["warning"])
+        if not status.get("built"):
+            ui.warn("现在用的还是 rotaeno/ 自带的旧曲库（2.9.0），"
+                    "缺定数的谱面算不出 Rating。执行 `library update` 更新。")
+        return
+
+    if args[0] == "update":
+        local = "--local" in args or "-l" in args
+        stats = library.update(local=local)
+        ui.ok(f"曲库已更新: {stats['songs']} 首 / {stats['charts']} 谱面 / "
+              f"IV-α {stats['iv_alpha']} 首 / 版本 {stats['latest_release'] or '未知'}")
+        for note in stats.get("notes") or []:
+            ui.info(note)
+        if stats.get("path"):
+            ui.info(f"写入: {stats['path']}")
+            ui.info("已在当前进程生效；下次启动会自动读这份库。")
+        else:
+            ui.warn("没能落盘，当前只是在内存里生效；下次启动要重新 update。"
+                    "按上面那条提示修好 data/ 的写权限就能持久化。")
+        return
+
+    if args[0] in ("source", "path"):
+        if len(args) < 2:
+            ui.info(f"Songlist.json 位置: {library.source_path()}")
+            return
+        store.set_library_path(" ".join(args[1:]))
+        ui.ok(f"已保存 Songlist.json 位置: {library.source_path()}")
+        return
+
+    ui.warn("用法: library | library update [--local] | library source <路径>")
+
+
 def cmd_interval(args) -> None:
     if not args:
         seconds = store.load_config().get("schedule", {}).get("interval", 0)
@@ -336,8 +445,8 @@ def cmd_interval(args) -> None:
 # ---------------------------------------------------------------- 主循环
 
 COMMANDS = {
-    "help": lambda args: print(HELP),
-    "?": lambda args: print(HELP),
+    "help": lambda args: print(help_text()),
+    "?": lambda args: print(help_text()),
     "profile": cmd_profile,
     "login": cmd_login,
     "b40": cmd_b40,
@@ -349,6 +458,8 @@ COMMANDS = {
     "task": cmd_task,
     "output": cmd_output,
     "save": lambda args: cmd_output(["export"] + args),
+    "library": cmd_library,
+    "db": cmd_library,
     "interval": cmd_interval,
 }
 
@@ -361,7 +472,7 @@ def dispatch(parts: list) -> bool:
 
     handler = COMMANDS.get(command)
     if handler is None:
-        ui.error(f"未知命令: {command}（输入 help 看看）")
+        ui.error(f"未知命令: {' '.join(parts)}（输入 help 看看）")
         return True
 
     try:
@@ -391,7 +502,7 @@ def main(argv=None) -> None:
         f"图片: {'on' if settings['image'] else 'off'} | "
         f"导出: {_format_setting(settings['export'])}"
     )
-    print(HELP)
+    print(help_text())
 
     while True:
         try:

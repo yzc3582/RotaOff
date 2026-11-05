@@ -4,8 +4,13 @@
 - rotaeno.api.taptap_processor.TapTapAPI.get_cloud_save  单谱 Rating、playStats
 - rotaeno.database.song_alias                           曲目别名模糊匹配
 - rotaeno.database.song_data                            定数与谱面总数
+
+`rotaeno/` 保持只读，网络与目录层面的修补集中在 `rotaoff/patch.py`
+（双斜杠 URL、非 JSON 响应、写死的 saves/temp 目录、历史库写入失败）。
 """
 
+import contextlib
+import io
 import json
 
 import requests
@@ -34,11 +39,36 @@ B40_COLUMNS = ("#", "曲目", "难度", "定数", "Rating", "分数", "状态")
 B40_ALIGNS = ("right", "left", "center", "right", "right", "right", "center")
 
 
+def _song_library():
+    """当前生效的曲库实例（可能是重建库或内存库）。"""
+    return rotaeno.database.song_data.song_data
+
+
 def find_song_id(song_alias: str) -> str:
-    """模糊匹配曲目别名，返回 song_id；找不到返回空字符串。"""
+    """把用户输入解析成 song_id；找不到返回空字符串。
+
+    顺序很重要：先认 **id 完全相同**，再认 **曲名完全相同**，最后才用上游的
+    别名模糊匹配。以前只走模糊匹配，输入 `-1` 会被匹配成 `BATTLE NO.1`
+    （都是 `-1` 的子串），查出来的是另一首歌。
+    """
     alias = (song_alias or "").strip()
     if not alias:
         return ""
+
+    library = _song_library()
+    lowered = alias.lower()
+    ids = library.getAllsong_ids()
+
+    for song_id in ids:
+        if str(song_id).lower() == lowered:
+            return song_id
+
+    for song_id in ids:
+        song = library.get_song(song_id) or {}
+        title = str(song.get("title") or "")
+        if title and title.strip().lower() == lowered:
+            return song_id
+
     fit = 80
     while fit > 0:
         results = rotaeno.database.song_alias.song_alias.get_song_id(song_alias=alias, fit=fit)
@@ -98,7 +128,15 @@ def _probe_response(api, profile: dict) -> str:
 
 
 def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dict:
-    """一次请求拿到 playerInfo + songDatas。"""
+    """一次请求拿到 playerInfo + songDatas。
+
+    `taptap_processor` 在解析时会对本地曲库没收录的曲目 `print(...)` 一行，
+    一屏几十上百行噪音会盖住真正的结果，所以这里把这段 stdout 暂时收进缓冲区。
+    真出异常时再把缓冲内容一并抛出去，方便排查。
+
+    当前正常会剩 3 行：`doppelganger` 与 `terabyte-connection`（wiki 还没收录），
+    以及 `true` 的 `Sp` 难度（愚人节谱面，不计入 Rating）。这三行是预期内的。
+    """
     profile = require_ready_profile(profile_name)
     region = (
         rotaeno.api.taptap.ServerRegion.CN
@@ -106,13 +144,17 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
         else rotaeno.api.taptap.ServerRegion.GLOBAL
     )
     api = rotaeno.api.taptap_processor.TapTapAPI(region=region, user_profile=profile)
+    buffer = io.StringIO()
     try:
-        return api.get_cloud_save(add_to_database=record_history)
+        with contextlib.redirect_stdout(buffer):
+            return api.get_cloud_save(add_to_database=record_history)
     except ValueError as exc:                       # 含 requests 的 JSONDecodeError
         raise RotaOffError(
             f"服务器返回的不是 JSON（{type(exc).__name__}: {exc}）\n"
             f"诊断:\n{_probe_response(api, profile)}"
         )
+    finally:
+        fetch_snapshot.last_noise = buffer.getvalue().strip()
 
 
 def best40_from(snapshot: dict, limit: int = 40) -> list:

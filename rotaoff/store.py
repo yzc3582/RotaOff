@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 
+from . import ui
 from .i18n import DEFAULT_LOCALE, t
 from .paths import CONFIG_EXAMPLE, CONFIG_FILE, DATA_DIR, USERS_EXAMPLE, USERS_FILE
 
@@ -96,8 +97,36 @@ def set_schedule_interval(seconds: int) -> dict:
     return config["schedule"]
 
 
+def set_library_path(path: str) -> dict:
+    """记住 Songlist.json 的位置（默认就是仓库根目录那份）。"""
+    config = load_config()
+    library = config.get("library")
+    if not isinstance(library, dict):
+        library = {}
+    library["source"] = str(path)
+    config["library"] = library
+    save_config(config)
+    return library
+
+
+def library_path() -> str:
+    """配置里记的 Songlist.json 路径；没配就返回空串。"""
+    library = load_config().get("library")
+    if isinstance(library, dict):
+        return str(library.get("source") or "")
+    return ""
+
+
 def active_profile_name() -> str:
-    return load_config().get("profile") or DEFAULT_PROFILE
+    """当前配置名；配置被删掉/改名后指针会残留，这时给出可用提示并回退到第一个配置。"""
+    config = load_config()
+    name = config.get("profile") or DEFAULT_PROFILE
+    users = load_users()
+    if not users or name in users:
+        return name
+    fallback = next(iter(users))
+    ui.warn(f"当前配置 `{name}` 已不存在，临时使用 `{fallback}`（可用 profile use 固定下来）")
+    return fallback
 
 
 def set_active_profile(name: str) -> str:
@@ -176,8 +205,27 @@ def require_ready_profile(name: str = None) -> dict:
 
 # ---------------------------------------------------------------- 任务清单
 
+def _normalize_task(task: dict) -> dict:
+    """读入时做一次轻量整理，兼容手改出来的脏数据。"""
+    if not isinstance(task, dict):
+        return task
+    fields = task.get("fields")
+    if isinstance(fields, list) and len(fields) != len(set(map(str, fields))):
+        seen = set()
+        cleaned = []
+        for item in fields:
+            key = str(item).lower()
+            if key not in seen:
+                seen.add(key)
+                cleaned.append(item)
+        task = dict(task)
+        task["fields"] = cleaned
+    return task
+
+
 def load_tasks(path: str = None) -> list:
-    return load_config(path).get("tasks") or []
+    tasks = load_config(path).get("tasks") or []
+    return [_normalize_task(task) for task in tasks]
 
 
 def save_tasks(tasks: list, path: str = None) -> list:

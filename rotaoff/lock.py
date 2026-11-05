@@ -16,6 +16,7 @@ from datetime import datetime
 
 from filelock import FileLock, Timeout
 
+from . import ui
 from .i18n import t
 from .paths import DATA_DIR
 from .store import RotaOffError
@@ -67,21 +68,32 @@ def release() -> None:
         pass
 
 
+def _open_file_lock(path: str):
+    """构造 FileLock；打不开锁文件时抛 OSError，由调用方决定怎么降级。"""
+    return FileLock(path, timeout=0)
+
+
 def acquire(role: str, force: bool = False) -> dict:
     """尝试拿锁；被占用时抛 LockedError。
 
     force=True 表示跳过锁直接跑，留给“确认另一个实例已经不在了”的极端情况。
+
+    锁文件写不进去（目录只读、被杀软锁住、权限不足等）时不让整个程序崩掉：
+    只警告一句然后继续跑 —— 互斥是“锦上添花”，单实例使用才是常态。
     """
     global _lock
 
     if force:
         return {}
 
-    lock = FileLock(LOCK_FILE, timeout=0)
+    lock = _open_file_lock(LOCK_FILE)
     try:
         lock.acquire(timeout=0)
     except Timeout:
         raise LockedError(read_info())
+    except (PermissionError, OSError) as exc:
+        ui.warn(f"无法创建锁文件 {LOCK_FILE}（{type(exc).__name__}: {exc}），本次不加锁继续运行")
+        return {}
 
     _lock = lock
     info = {
