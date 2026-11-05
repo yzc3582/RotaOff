@@ -46,7 +46,7 @@ HELP_ZH = """
 其它
   library                     查看当前用的是哪份曲库
   library update              从 wiki 抓最新 Songlist.json 并重建 data/song_data.db
-  library update --local      只用仓库根目录的 Songlist.json（不联网）
+  library update --local      只用本地的 Songlist.json（不联网）
   library source [路径]       指定 Songlist.json 的位置
   interval <秒>               保存自动化循环间隔，0 = 只跑一次
   help / quit

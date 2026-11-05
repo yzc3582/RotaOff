@@ -77,7 +77,7 @@ python run_tasks.py --interval 300              :: every 5 minutes, Ctrl+C to st
 python run_tasks.py --save txt,md --image       :: override export formats / enable image
 ```
 
-Selection rules (`--task` starts a new segment, `--filter` narrows only the current one, all segments are unioned at the end) and the filter expression syntax are documented in [filter.en_US.md](filter.en_US.md) · [中文](filter.zh_CN.md).
+Selection rules (`--task` starts a new segment, `--filter` narrows only the current one, all segments are unioned at the end) and the filter expression syntax are documented in [docs/filter.en_US.md](docs/filter.en_US.md) · [中文](docs/filter.zh_CN.md).
 
 ## Configuration
 
@@ -126,9 +126,11 @@ When adding strings you only have to edit `zh-CN.json`; keys missing from `en-US
 
 ## The song library (this is what makes Rating correct)
 
-`rotaeno/database/song_data.db` ships with the upstream repo and **stopped at 2.9.0 with 307 songs**. Client on test is at 2.99.0 and its save has 436 songs — the 129 missing songs (538 charts) have no `num` (chart constant), so upstream counts them as 0 rating and the total is dragged down (measured 14.5859 vs. a real 14.6931).
+`rotaeno/database/song_data.db` ships with the upstream repo and, like the upstream project itself, is **not maintained**. Its newest song is release 2.9.0 and it holds 307 songs. Every chart on a newer song has no `num` (chart constant), so upstream rates it as 0 and the total is dragged down.
 
-This project **never modifies or reads that .db**. On startup `rotaoff/library.py` swaps the `song_data` instance at runtime for a database rebuilt from fresh data. In other words `rotaeno/database/song_data.db` is now a **dead file**: it stays only because upstream code calls `songData(path)`, and you can ignore it (deleting it is fine as long as `Songlist.json` or `data/song_data.db` exists).
+Concrete measurement, so the size of the problem is clear: when yzc3582 (the human author of this fork) ran it in November 2026, the game client was at 2.99.0 and the save held 436 songs. 129 songs / 538 charts had no constant, and the program reported Rating **14.5859** while the game showed **14.6931**. Both numbers are a snapshot of that moment — the gap grows with every release, so do not treat them as fixed values.
+
+This project **never modifies or reads that .db**. On startup `rotaoff/library.py` swaps the `song_data` instance at runtime for a database rebuilt from fresh data. In other words `rotaeno/database/song_data.db` is now a **dead file**: it stays only because upstream code calls `songData(path)`; deleting it is fine as long as `Songlist.json` or `data/song_data.db` exists.
 
 The data comes from the wiki's `Template:Songlist.json` — the very same template RotaBot originally built its db from. It carries song id, title, artist, duration, release version and the constant of every difficulty, IV-α included (`ratingClass: 200`).
 
@@ -155,6 +157,14 @@ To keep layer 2 permanently available, grab a copy by hand:
 
 The rebuilt library lands in `data/song_data.db` (same schema as upstream: `songs` + `song_levels`); after the first build every start reads it directly and never touches the network. If `data/` is not writable the program degrades to an **in-memory library** (works for this session, must be rebuilt next time) and says so loudly.
 
+That file is **not committed** (see `.gitignore`): it is derived data, and its content belongs to the wiki contributors. Rebuilding it takes one command.
+
+## Documentation
+
+- [`docs/py-all-in-one.en_US.md`](docs/py-all-in-one.en_US.md) — every user-visible message and option in English
+- [`docs/filter.en_US.md`](docs/filter.en_US.md) — task selection and filter expressions
+- [`docs/filter.yzc3582.fake.cpp`](docs/filter.yzc3582.fake.cpp) — the original pseudocode the selection rules came from
+
 ## One instance at a time
 
 `tui.py` and `run_tasks.py` both write `data/tasks.json`, so startup takes a mutex on `data/rotaoff.lock` via `filelock`:
@@ -171,7 +181,7 @@ The rebuilt library lands in `data/song_data.db` (same schema as upstream: `song
 
 ## 📜 License
 
-Released under the [MIT License](https://license/).
+Released under the [MIT License](LICENSE).
 
 This project is a fork of [None1145/RotaBot](https://github.com/None1145/RotaBot). The original project shipped no standard LICENSE file, but its README explicitly allowed modification and redistribution, so this fork keeps the original attribution and is released under MIT.
 

@@ -1,6 +1,6 @@
 # RotaOff — all-in-one English reference
 
-**Language**：[简体中文](README.zh_CN.md) · [English](README.md) · this page
+**Language**：[简体中文](../README.zh_CN.md) · [English](../README.md) · this page
 
 The Python entry points print Chinese by default, because the project (and its upstream `rotaeno/` package) is Chinese-first. Everything a user sees is listed here in English. Program messages can also be switched at runtime:
 
@@ -32,7 +32,7 @@ usage: run_tasks.py [-h] [--list] [--task SPEC] [--filter EXPR] [--dry-run]
 | `--quiet` | report results only, no tables |
 | `--force` | ignore `data/rotaoff.lock` (only when you are sure the other instance is gone) |
 
-Selection rules: the initial set is every task; each `--task` starts a new segment, `--filter` narrows only the current segment, and all segments are unioned at the end. See [filter.en_US.md](filter.en_US.md).
+Selection rules: the initial set is every task; each `--task` starts a new segment, `--filter` narrows only the current segment, and all segments are unioned at the end. See [filter.en_US.md](filter.en_US.md) in this folder.
 
 ## `tui.py` commands
 

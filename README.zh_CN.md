@@ -77,7 +77,7 @@ python run_tasks.py --interval 300              :: 每 5 分钟一轮，Ctrl+C �
 python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开图片
 ```
 
-选择规则（`--task` 开新段、`--filter` 只筛当前段、最后求并集）和过滤表达式的写法见 [filter.zh_CN.md](filter.zh_CN.md) · [English](filter.en_US.md)。
+选择规则（`--task` 开新段、`--filter` 只筛当前段、最后求并集）和过滤表达式的写法见 [docs/filter.zh_CN.md](docs/filter.zh_CN.md) · [English](docs/filter.en_US.md)。
 
 ## 配置
 
@@ -126,9 +126,11 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
 
 ## 曲库（Rating 算得准不准全看这里）
 
-`rotaeno/database/song_data.db` 是上游随仓库带的库，**停更在 2.9.0，只有 307 首**。测试用的客户端是 2.99.0，存档里有 436 首 —— 差的 129 首、538 个谱面没有定数（`num`），上游会直接按 0 分算进 Rating，于是 Rating 会被系统性压低（实测 14.5859，真实 14.6931）。
+`rotaeno/database/song_data.db` 是上游随仓库带的库，和上游项目本身一样**不再维护**，最新一首是 2.9.0 的曲子，共 307 首。比它新的曲目，每个谱面都没有定数（`num`），上游会按 0 分算进 Rating，于是总分被系统性压低。
 
-本项目**不改 `rotaeno/` 里那份 .db**，也不读它：启动时由 `rotaoff/library.py` 在**运行期**把 `song_data` 实例换成用新数据重建的库。也就是说 `rotaeno/database/song_data.db` 现在是**死文件**，留着只为兼容上游代码里的 `songData(path)` 签名，你完全可以不管它（删掉也行，只要 `Songlist.json` 或 `data/song_data.db` 在）。
+给个具体量级：yzc3582（本分支的人类作者）在 2026 年 11 月实测时，游戏客户端是 2.99.0，存档 436 首，其中 129 首 / 538 个谱面没有定数，程序算出 Rating **14.5859**，游戏里显示 **14.6931**。这两个数字只是那一刻的快照——每出新曲差距都会变大，别当成固定值。
+
+本项目**不改 `rotaeno/` 里那份 .db**，也不读它：启动时由 `rotaoff/library.py` 在**运行期**把 `song_data` 实例换成用新数据重建的库。也就是说 `rotaeno/database/song_data.db` 现在是**死文件**，留着只为兼容上游代码里的 `songData(path)` 签名；删掉也没关系，只要 `Songlist.json` 或 `data/song_data.db` 还在。
 
 数据来源是 wiki 的 `Template:Songlist.json`（和 RotaBot 当初造 db 用的是同一份模板），包含曲目 id、曲名、曲师、时长、上架版本，以及全部难度的定数（含 IV-α，`ratingClass: 200`）。
 
@@ -155,6 +157,14 @@ library source D:\some\Songlist.json  :: 指定本地文件位置
 
 重建出来的库落在 `data/song_data.db`（与上游同 schema：`songs` + `song_levels`），第一次之后每次启动直接读它，不再联网。`data/` 不可写时程序会自动退化为**内存曲库**（本次会话照常能算，重启要重来），并明确警告。
 
+这份库**不进版本库**（见 `.gitignore`）：它是派生数据，内容版权归 wiki 的贡献者。要重建一条命令就够。
+
+## 文档都在 `docs/`
+
+- [`docs/filter.zh_CN.md`](docs/filter.zh_CN.md) / [`docs/filter.en_US.md`](docs/filter.en_US.md) —— 任务选择与过滤表达式
+- [`docs/filter.yzc3582.fake.cpp`](docs/filter.yzc3582.fake.cpp) —— 选择规则最初的伪代码
+- [`docs/py-all-in-one.en_US.md`](docs/py-all-in-one.en_US.md) —— 全部英文提示与选项的汇总
+
 ## 同时只能开一个
 
 `tui.py` 和 `run_tasks.py` 会写同一份 `data/tasks.json`，所以启动时用 `filelock` 对 `data/rotaoff.lock` 加互斥锁：
@@ -171,7 +181,7 @@ library source D:\some\Songlist.json  :: 指定本地文件位置
 
 ## 📜 开源协议
 
-本项目采用 [MIT License](https://license/) 协议开源。
+本项目采用 [MIT License](LICENSE) 协议开源。
 
 本项目是基于 [None1145/RotaBot](https://github.com/None1145/RotaBot) 的 Fork 版本。由于原项目未附带标准 LICENSE 文件，但原作者在 README 中明确声明允许自由修改与分发，因此本衍生项目在保留原作者署名的基础上，采用 MIT 协议进行开源。
 

@@ -12,7 +12,7 @@
     "x['type'] == 'b40' and 'txt' in export"
     "len(fields) > 2"                      len 之类常用函数会单独放行
 
-多段合并的规则见 apply_selection()，或根目录 filter.md。
+多段合并的规则见 apply_selection()，或 docs/filter.zh_CN.md。
 """
 
 import ast
@@ -121,7 +121,7 @@ def parse_spec(spec: str, all_tasks: list) -> list:
 
 
 def apply_selection(all_tasks: list, ops: list) -> list:
-    """按命令行顺序执行选择，语义同 filter.yzc3582.fake.cpp：
+    """按命令行顺序执行选择，语义同 docs/filter.yzc3582.fake.cpp：
 
         current = "*"          # 初始集合
         segments = []

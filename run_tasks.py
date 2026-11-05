@@ -11,7 +11,7 @@
     python run_tasks.py --dry-run           只打印选中的任务
     python run_tasks.py --force             忽略 data/rotaoff.lock 强行启动
 
-选择规则与 tui.py 里 task run 一致，见 filter.zh_CN.md / filter.en_US.md。
+选择规则与 tui.py 里 task run 一致，见 docs/filter.zh_CN.md / docs/filter.en_US.md。
 """
 
 import argparse
@@ -25,7 +25,7 @@ from rotaoff.store import RotaOffError
 class _SelectAction(argparse.Action):
     """把 --task / --filter 按命令行出现顺序记进 namespace.selection_ops。
 
-    argparse 本身会丢顺序，而选择规则依赖顺序（见 filter.yzc3582.fake.cpp），
+    argparse 本身会丢顺序，而选择规则依赖顺序（见 docs/filter.yzc3582.fake.cpp），
     所以这里自己记一笔。
     """
 
@@ -47,8 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
         # 默认的 HelpFormatter 会把 epilog 折成一段，换行全被吃掉；这里保留原样
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="选择规则：初始集合是全部任务；每遇到一个 --task 就开新段，"
-               "--filter 只作用于当前段，最后取各段并集。详见 filter.zh_CN.md\n"
-               "English users: see py-all-in-one.en_US.md in the repository root.",
+               "--filter 只作用于当前段，最后取各段并集。详见 docs/filter.zh_CN.md\n"
+               "English users: see docs/py-all-in-one.en_US.md.",
     )
     parser.add_argument("--list", action="store_true", help="只列出任务")
     parser.add_argument("--task", action=_SelectAction, metavar="序号|区间|名字",

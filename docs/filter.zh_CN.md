@@ -1,6 +1,6 @@
 # 任务选择与过滤
 
-**语言 / Language**：[简体中文](filter.zh_CN.md) · [English](filter.en_US.md)
+**语言 / Language**：[简体中文](filter.zh_CN.md) · [English](filter.en_US.md) · [返回 README](../README.zh_CN.md)
 
 `run_tasks.py` 和 `tui.py` 的 `task run` 用同一套规则。规则很短，但**依赖参数顺序**，所以先说结论：
 

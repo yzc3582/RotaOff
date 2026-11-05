@@ -7,16 +7,23 @@
 - `rotaeno/` 是上游 `None1145/RotaBot` 的代码，**保持只读**，所有改动都在 `rotaoff/` 里。
 - 设计目标：无 Discord、无 asyncio、任务可保存、可交给 `run_tasks.py` 自动跑。
 - 入口：`tui.py`（交互）、`run_tasks.py`（自动化）、`bot.py`（3 行启动器，等同 `tui.py`）。
-- 文档：`README.md`（英文）/ `README.zh_CN.md`、`filter.zh_CN.md` / `filter.en_US.md`、`py-all-in-one.en_US.md`（英文提示汇总）。
+- 文档：`README.md`（英文）/ `README.zh_CN.md` 在根目录；`docs/` 下放 `filter.zh_CN.md` /
+  `filter.en_US.md`、`filter.yzc3582.fake.cpp`（选择语义的原始伪代码）、`py-all-in-one.en_US.md`（英文提示汇总）。
   `AGENTS.md` 是工具固定读取的文件名，不套 `*.zh_CN.md` 规则。
-- **同步规则**：`py-all-in-one.en_US.md` 是英文提示的唯一汇总。任何新增或修改的用户可见文案
+- **文档面向所有人**：不写「我的账号」「你现在是 2.99」这种把某次测试当普适事实的说法，
+  需要举例就写「yzc3582（人类方作者）当时测试的版本是 2.99」。任何人 clone 下来都应该能照着跑。
+- **同步规则**：`docs/py-all-in-one.en_US.md` 是英文提示的唯一汇总。任何新增或修改的用户可见文案
   （`data/i18n/*.json` 的 `t()` 键、`tui.py` 的 `HELP`、`run_tasks.py` 的 help/epilog、任务向导的提问）
   都必须同步更新它，否则英文用户看到的清单就和程序不一致了。
+- **`.gitignore` 覆盖派生数据**：`[sS]onglist.json`、`data/song_data.db(.tmp)`、`data/player_data.db`、
+  `data/saves/`、`data/temp/` 都不入库 —— 内容源自 wiki / 游戏，版权不归本项目，避免「意外二次分发」。
+  这些文件全都能用 `library update` 或首次运行自动重建，所以不入库不影响任何人使用。
 
 ## 曲库：原 `rotaeno/database/song_data.db` 怎么处理
 
-**结论：不读、不改、当死文件。** 它随上游仓库带，停在 **2.9.0 / 307 首**；客户端 2.99.0，存档 436 首。
-缺的 129 首（538 个谱面）没有 `num` 定数，`taptap_processor` 会按 0 分算进 Rating → Rating 被压低（实测 14.5859，真实 14.6931，差 0.1070）。
+**结论：不读、不改、当死文件。** 它随上游仓库带，最新一首是 2.9.0 的曲子，共 307 首，上游已不再维护。
+举例说明量级（**只是那一刻的快照，别当普适事实写进文档**）：yzc3582（人类方作者）2026-11 实测时客户端是 2.99.0、存档 436 首，
+缺的 129 首（538 个谱面）没有 `num` 定数，`taptap_processor` 会按 0 分算进 Rating → Rating 被压低（程序 14.5859，游戏 14.6931，差 0.1070）。
 **这不是 ID 漂移**：129 个缺失 id 里 101 个是曲库完全没有的真新歌，其余是模糊匹配误配。换 ID 映射没用，必须换数据。
 
 新机制（`rotaoff/library.py`，不动 `rotaeno/` 源码）：
@@ -31,7 +38,8 @@
 ## 曲库怎么更新（三层回退，用户要能自己拿到数据）
 
 数据源：`https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw`
-这就是 RotaBot 当初造 db 的同款模板：434 首、含 `ratingClass: 200` 的 IV-α（34 首）、`ratingReal` 就是定数，`release_version` 到 2.99.0。
+这就是 RotaBot 当初造 db 的同款模板，`ratingReal` 就是定数，含 `ratingClass: 200` 的 IV-α。
+（2026-11-05 抓到的那份：434 首 / 34 首 IV-α / `release_version` 最高 2.99.0。数字会随版本变，别当常量写死。）
 **曲绘 / 物量都不需要**，Rating/B40 只要 id + 定数 + 分数，所以这是最小充分数据。
 
 1. **自动抓**：`library update`。该站在 Anubis 反爬后面（PoW），三步：
@@ -67,7 +75,7 @@
 
 ## 选择语义（最容易记错的地方）
 
-以根目录 `filter.yzc3582.fake.cpp` 为准：初始集合是 `*`；每个 `--task` 开新段（先把「被动过的」当前段收进 `segments`），`--filter` 只筛当前段，最后取并集。
+以 `docs/filter.yzc3582.fake.cpp` 为准：初始集合是 `*`；每个 `--task` 开新段（先把「被动过的」当前段收进 `segments`），`--filter` 只筛当前段，最后取并集。
 
 注意两个反直觉点：
 
