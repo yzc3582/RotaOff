@@ -1,0 +1,12 @@
+# requirements.txt
+simcord[pytest,preview]
+requests
+qrcode
+urllib3
+msgpack
+sqlalchemy
+pydantic
+thefuzz
+playwright
+pytest-asyncio
+tzdata; sys_platform == 'win32'
