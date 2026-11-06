@@ -19,6 +19,28 @@
   `data/saves/`、`data/temp/` 都不入库 —— 内容源自 wiki / 游戏，版权不归本项目，避免「意外二次分发」。
   这些文件全都能用 `library update` 或首次运行自动重建，所以不入库不影响任何人使用。
 
+## 上游修补：`rotaoff/patch.py`
+
+`rotaeno/` 只读，所以运行时打补丁，`rotaoff/__init__.py` 导入时调用一次 `install()`。
+
+- **P0 根因（已修）**：`BaseAPI` 里是 `f"{self.base_url}/{endpoint}"`，而 endpoint 自己以 `/` 开头，
+  拼出 `https://host//1.1/classes/CloudSave`。网关把双斜杠当另一条路由 → 404 + 空响应体 →
+  上层只剩一句 `JSONDecodeError: Expecting value: line 1 column 1`。
+  以前 b40 / song / rtr / status 全挂同一个错，就是这个。
+  `patch._request()` 改成 `f"{base_url}/{endpoint.lstrip('/')}"`，并接管 `get/post/put`。
+- 顺带把「请求失败看不见原因」也修了：非 JSON 响应现在报 URL + 状态码 + 响应体字节数，
+  超时报「请求超时（20 秒）」，不再是一句没信息量的异常。
+- `patch.redirect_upstream_dirs()` 把上游写死的 `saves/`、`temp/` 重定向到 `data/` 下。
+
+## `profile set` 的字段名（别再犯）
+
+三处清单曾经各说各话：`help` 写短名（`server`/`objectid`/`session`）、`tui` 把输入 `.lower()`、
+`store.PROFILE_FIELDS` 存 camelCase → 只有本来就小写的 `locale` 能保存成功。
+现在 `store.PROFILE_ALIASES` + `store.normalize_profile_field()` 是唯一对照表，大小写不敏感，
+认不出来时**原样返回**用户输入（报错能照抄那个词），合法性由 `field in PROFILE_FIELDS` 判断。
+`set_profile_field()` 返回三元组 `(真实字段名, 是否可用, 消息键)`，改动时记得同步 `tui.py` 的 `login`。
+
+
 ## 曲库：原 `rotaeno/database/song_data.db` 怎么处理
 
 **结论：不读、不改、当死文件。** 它随上游仓库带，最新一首是 2.9.0 的曲子，共 307 首，上游已不再维护。
@@ -68,10 +90,17 @@
 - 云存档里只有分数（`{"levels":{"IV":{"Score","Flag","IsCleared"}}}`），**没有定数**，定数只能来自外部数据。
 - 评分公式（`taptap_processor.py:184`）：`sum(top10)*0.6/10 + sum(top[10:20])*0.2/10 + sum(top[20:40])*0.2/20`；
   `:170-176` 有 IV 与 IV_Alpha 二选一（取高者，另一个置 0）。
-- 存档里存在 `Sp` 难度（愚人节谱面，目前只有 `true` 这一首），**不计入 Rating**。
+- 存档是**全量**的：没打过的谱也在里面（分数 0），所以下面这些警告跟「你查了哪一首」「有没有玩过」都无关。
+- `Sp` 是**非常规谱面的总称**，不是「愚人节谱面」：旅程小游戏、愚人节、Stasis / Quadruplicity 的解禁谱都归这一类，
+  一律**不计入 Rating**。`true` 的小游戏谱在存档里的难度键就是 `Sp`，游戏准备界面显示为 `- O v e r l o a d -`。
   `Songlist.json` 本来就没有 `Sp`，所以 `taptap_processor` 会 `print("Song level \`Sp\` not found ...")`。
   这类噪音连同 `doppelganger` / `terabyte-connection`（wiki 也还没收录）一起被 `fetch_snapshot` 的 stdout 缓冲吃掉，
   正常只出现 3 行，属于预期，不是 bug。`Sp` 分数为 0，不影响 Rating。
+- 这 3 行噪音以前只有 `b40`（走 `data.fetch_snapshot()`）被 `redirect_stdout` 吃掉，
+  `song`/`status`/`rtr` 直调 `rotaeno.processor` 时漏到主输出。现在统一走 `data.quiet_call()`：
+  静音的同时把内容记进 `data._UPSTREAM_NOTES`，`data.missing_from_library()` 解析成
+  `{songs, levels}`，由 `library` 命令底部展示。**注意**：记录是进程内的，
+  所以要先查一次存档，`library` 才有内容可显示。
 
 ## 选择语义（最容易记错的地方）
 
@@ -102,12 +131,23 @@
 - i18n：`zh-CN.json` 与 `en-US.json` 键集合一致（39 条），缺键会依次回退到 `zh-CN` → 原始 key。
 - 导出：`txt` / `md` / `csv` / `json` 与 `latest` 固定名副本都测过，CJK 表格宽度对齐正常。
 
-## 还没做的
+## 还没做的（下次从这里继续）
 
-- 在**正常权限**的机器上复验落盘：本会话 `data/`、`output/` 全程 `PermissionError`，
-  所以 `data/song_data.db`、`data/saves/*.msgpack`、`output/*.txt` 都只在内存里通过，
-  图片（playwright chromium）也因为起不了子进程而没跑通 —— 这三项需要用户侧确认。
-- 图片渲染失败时的提示文案还可以更友好（现在只有一行 warn）。
-- `output/` 目录里的历史文件没有清理策略。
-- `song -1` 这种「纯编号」输入已经能精确命中 id，但用户输入带空格的曲名时仍只走
-  精确匹配 + 模糊回退，没有做别名表。
+**1. 真实账号的端到端没跑过**（最重要）。patch 修掉双斜杠后只推断到「请求能发出去」，
+还没有一次成功出数的记录。跑 `.venv\Scripts\python tui.py` → `b40`，核对三件事：
+Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不是 0 分；`rtr` 的区间语义。
+
+**2. 锁：不是 bug（已排除）**。2026-11-06 那次 `已有 RotaOff 在运行: tui (pid 5860)` 是用户自己后台跑的实例忘了关，
+`filelock` 报得对。**教训**：`--force` 不是「清理陈旧锁」的开关，而是「明知有实例在跑还要并行」——
+两个实例同时写 `output/` 会互相覆盖。真要用，先确认那个 pid 已经退出。
+
+**3. 小问题**
+- `task add` 第一轮实测存进了 `b40,b40,b40`，字段没校验也没去重（这轮未复核是否已加）。
+- argparse 的 `usage:` 行中英混排折行参差：它按字符数算宽度，不是显示宽度，纯外观问题。
+- 图片渲染失败的提示只有一行 warn，应区分「playwright chromium 缺失」和「无子进程权限」。
+- `output/` 里的历史文件没有清理策略。
+- 曲名带空格时只走精确匹配 + 模糊回退，没有别名表。
+
+**4. 文档同步**：新增 `library` 系列命令后，`HELP_ZH`/`HELP_EN`、`README(.zh_CN)`、
+`docs/py-all-in-one.en_US.md` 是否都覆盖了 `library` / `library update` / `library source`；
+以及 `profile set` 现在认短名和任意大小写这件事，也应写进英文汇总。

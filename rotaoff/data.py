@@ -12,11 +12,14 @@
 import contextlib
 import io
 import json
+import os
+import re
 
 import requests
 
 import rotaeno
 
+from .paths import LIBRARY_GAPS_FILE
 from .store import RotaOffError, require_ready_profile
 
 NO_DATA = "【无数据】"          # 只兜底展示性字段；定数缺失的谱面不会进结果
@@ -127,6 +130,97 @@ def _probe_response(api, profile: dict) -> str:
     return "\n".join(lines)
 
 
+_GAPS = {"songs": [], "levels": []}     # 存档里对不上本地曲库的记录
+_GAPS_LOADED = False
+
+
+def _load_gaps() -> None:
+    """把上次落盘的记录读回来，跨会话也能看到。读不出来就当没有。"""
+    global _GAPS_LOADED
+    if _GAPS_LOADED:
+        return
+    _GAPS_LOADED = True
+    try:
+        with open(LIBRARY_GAPS_FILE, "r", encoding="utf-8") as file:
+            saved = json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(saved, dict):
+        return
+    for song_id in saved.get("songs") or []:
+        text = str(song_id)
+        if text not in _GAPS["songs"]:
+            _GAPS["songs"].append(text)
+    for pair in saved.get("levels") or []:
+        pair = tuple(str(item) for item in pair)
+        if len(pair) == 2 and pair not in _GAPS["levels"]:
+            _GAPS["levels"].append(pair)
+
+
+def _save_gaps() -> None:
+    """落盘；写失败只忽略——查询结果比这份缓存重要。"""
+    payload = {
+        "songs": list(_GAPS["songs"]),
+        "levels": [list(pair) for pair in _GAPS["levels"]],
+    }
+    try:
+        os.makedirs(os.path.dirname(LIBRARY_GAPS_FILE), exist_ok=True)
+        with open(LIBRARY_GAPS_FILE, "w", encoding="utf-8") as file:
+            json.dump(payload, file, ensure_ascii=False, indent=4)
+    except OSError:
+        pass
+
+
+def _remember_upstream(text: str) -> None:
+    """解析上游那两类提示，记进 `_GAPS` 并落盘（有变化才写）。"""
+    _load_gaps()
+    changed = False
+    for line in (text or "").splitlines():
+        found = re.match(r"Song ID `(.+?)` not found", line)
+        if found:
+            song_id = found.group(1)
+            if song_id not in _GAPS["songs"]:
+                _GAPS["songs"].append(song_id)
+                changed = True
+            continue
+        found = re.match(r"Song level `(.+?)` not found .*song ID `(.+?)`", line)
+        if found:
+            pair = (found.group(2), found.group(1))
+            if pair not in _GAPS["levels"]:
+                _GAPS["levels"].append(pair)
+                changed = True
+    if changed:
+        _save_gaps()
+
+
+def quiet_call(fn, *args, **kwargs):
+    """跑上游函数，吃掉它的 `print` 噪音，但把内容记下来给 `library` 命令看。
+
+    `taptap_processor:141` 会遍历**整份存档**——存档是全量的，没打过的谱也在
+    里面（分数 0）——对本地曲库对不上的曲目逐条 `print`。所以这些警告跟
+    「你查的是哪一首」无关，查任何一首都会出现同一批。
+
+    两类对不上：
+    - `Song ID ... not found`：存档里有这首，`Songlist.json` 还没收录，
+      定数无从查起（目前是 doppelganger / terabyte-connection）。
+    - `Song level ... not found`：曲目在库里，但存档里的难度键不在库里。
+      典型是 `Sp`——**非常规谱面**的总称（旅程小游戏、愚人节、Stasis 与
+      Quadruplicity 解禁谱等），一律不计入 Rating。
+    """
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _remember_upstream(buffer.getvalue())
+
+
+def missing_from_library() -> dict:
+    """曲库对不上的清单（含上次落盘的记录）：整首缺失的曲目 + 缺失的难度键。"""
+    _load_gaps()
+    return {"songs": list(_GAPS["songs"]), "levels": list(_GAPS["levels"])}
+
+
 def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dict:
     """一次请求拿到 playerInfo + songDatas。
 
@@ -155,6 +249,7 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
         )
     finally:
         fetch_snapshot.last_noise = buffer.getvalue().strip()
+        _remember_upstream(buffer.getvalue())
 
 
 def best40_from(snapshot: dict, limit: int = 40) -> list:

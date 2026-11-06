@@ -16,6 +16,37 @@ DEFAULT_PROFILE = "default"
 REQUIRED_KEYS = ("serverCode", "objectID", "sessionToken")
 SERVER_CODES = ("cn", "global")          # rotaeno.api 只实现了国服 / 国际服端点
 PROFILE_FIELDS = ("serverCode", "objectID", "sessionToken", "locale")
+# 用户输入 -> users.json 里的真实键。help 里宣传的是短名，存储用的是 camelCase，
+# 这张表是唯一的对照来源，匹配时大小写不敏感。
+PROFILE_ALIASES = {
+    "server": "serverCode",
+    "servercode": "serverCode",
+    "objectid": "objectID",
+    "session": "sessionToken",
+    "sessiontoken": "sessionToken",
+    "token": "sessionToken",
+    "locale": "locale",
+    "lang": "locale",
+}
+
+
+def normalize_profile_field(key: str) -> str:
+    """把 `profile set` 的字段名映射成真实键；认不出来时原样返回用户输入。
+
+    原样返回而不是返回空串，是为了让报错能照抄用户敲的那个词
+    （`profile set serve cn` → 提示里就是 `serve`）。是否合法由调用方
+    用 `field in PROFILE_FIELDS` 判断。
+    """
+    text = str(key or "").strip()
+    if not text:
+        return ""
+    lowered = text.lower()
+    if lowered in PROFILE_ALIASES:
+        return PROFILE_ALIASES[lowered]
+    for field in PROFILE_FIELDS:
+        if field.lower() == lowered:
+            return field
+    return text
 
 DEFAULT_CONFIG = {
     "profile": DEFAULT_PROFILE,
@@ -178,17 +209,31 @@ def verify_profile(profile: dict) -> tuple:
 
 
 def set_profile_field(key: str, value: str, name: str = None) -> tuple:
-    if key not in PROFILE_FIELDS:
+    """保存一个字段，返回 (真实字段名, 是否可用, 消息键)。
+
+    这里的 `key` 是用户敲的原文，`server` / `serverCode` / `SERV ER` 之类
+    都靠 `normalize_profile_field` 映射成 users.json 里的真实键。
+    """
+    field = normalize_profile_field(key)
+    if field not in PROFILE_FIELDS:
         raise RotaOffError(t("profile-field-invalid", field=key))
-    if key == "serverCode" and value not in SERVER_CODES:
-        raise RotaOffError(t("unavailable-server-code", server_code=value))
+
+    value = str(value if value is not None else "").strip()
+    if field == "serverCode":
+        value = value.lower()
+        if value not in SERVER_CODES:
+            raise RotaOffError(t("unavailable-server-code", server_code=value))
+
     users = load_users()
     name = name or active_profile_name()
     if name not in users:
         raise RotaOffError(t("profile-not-found", profile=name))
-    users[name][key] = value
+    if not isinstance(users[name], dict):
+        users[name] = {}
+    users[name][field] = value
     save_users(users)
-    return verify_profile(users[name])
+    verified, message_key = verify_profile(users[name])
+    return field, verified, message_key
 
 
 def require_ready_profile(name: str = None) -> dict:

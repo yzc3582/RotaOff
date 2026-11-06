@@ -156,7 +156,7 @@ def _task_song_info(task: dict, render_image: bool) -> dict:
         raise RotaOffError(t("song-alias-not-found", locale, song_alias=alias))
 
     profile = require_ready_profile(profile_name)
-    song_data = rotaeno.processor.get_song(profile, song_id=song_id, just_data=True)
+    song_data = data.quiet_call(rotaeno.processor.get_song, profile, song_id=song_id, just_data=True)
     if not song_data:
         raise RotaOffError(t("task-no-song-data", locale, song_alias=alias))
 
@@ -201,7 +201,9 @@ def _task_song_status(task: dict, render_image: bool) -> dict:
         raise RotaOffError(t("unavailable-song-status", locale, song_status=status))
 
     profile = require_ready_profile(profile_name)
-    song_datas = rotaeno.processor.get_song_status(profile, song_status=status, just_data=True)
+    song_datas = data.quiet_call(
+        rotaeno.processor.get_song_status, profile, song_status=status, just_data=True
+    )
     song_datas = _check_diff(song_datas, task, locale)
     rows = [
         [
@@ -249,7 +251,8 @@ def _task_song_rtr(task: dict, render_image: bool) -> dict:
     span = f"≥{low:g}" if high >= LEVEL_MAX_UNBOUNDED else f"{low:g} ~ {high:g}"
 
     profile = require_ready_profile(profile_name)
-    song_datas = rotaeno.processor.get_song_rtr(
+    song_datas = data.quiet_call(
+        rotaeno.processor.get_song_rtr,
         profile,
         song_level_num_range=(low, high),
         song_sort_type=sort,

@@ -173,12 +173,12 @@ def cmd_profile(args) -> None:
         ui.ok(f"已新建并切换到配置: {args[1]}")
         return
     if action == "set" and len(args) >= 3:
-        key, value = args[1].lower(), " ".join(args[2:])
-        verified, message_key = store.set_profile_field(key, value)
+        key, value = args[1], " ".join(args[2:])
+        field, verified, message_key = store.set_profile_field(key, value)
         if verified:
-            ui.ok(f"已保存: {key} = {value}")
+            ui.ok(f"已保存: {field} = {value}")
         else:
-            ui.warn(t(message_key, store.profile_locale()))
+            ui.warn(f"已保存: {field} = {value}（还缺: {t(message_key, store.profile_locale())}）")
         return
     ui.warn("用法: profile | profile use <名> | profile new <名> | profile set <字段> <值>")
 
@@ -205,7 +205,7 @@ def cmd_login(args) -> None:
 
     store.set_profile_field("serverCode", server)
     store.set_profile_field("objectID", info["objectID"])
-    verified, message_key = store.set_profile_field("sessionToken", info["sessionToken"])
+    _, verified, message_key = store.set_profile_field("sessionToken", info["sessionToken"])
     message = t(message_key, store.profile_locale())
     ui.ok(message) if verified else ui.warn(message)
 
@@ -382,6 +382,21 @@ def cmd_output(args) -> None:
     ui.warn("用法: output | output set <键> <值> | output export txt,md")
 
 
+def _show_library_gaps() -> None:
+    """本次运行里上游扫描存档时发现的「曲库对不上」，平时被 `data.quiet_call` 吃掉。"""
+    gaps = data.missing_from_library()
+    if not gaps["songs"] and not gaps["levels"]:
+        return
+    rows = [[song_id, "整首", "曲库没有这首，定数无从查起"] for song_id in gaps["songs"]]
+    rows += [
+        [song_id, level, "非常规谱面，不计入 Rating"]
+        for song_id, level in gaps["levels"]
+    ]
+    print()
+    ui.info("查询存档时有这些内容对不上本地曲库（不影响其它曲目的计算）：")
+    ui.table(["曲目 ID", "难度", "说明"], rows, aligns=["left", "center", "left"])
+
+
 def cmd_library(args) -> None:
     """曲库：看现在用的哪份、更新、换源。"""
     import json as _json
@@ -405,6 +420,7 @@ def cmd_library(args) -> None:
         if not status.get("built"):
             ui.warn("现在用的还是 rotaeno/ 自带的旧曲库（2.9.0），"
                     "缺定数的谱面算不出 Rating。执行 `library update` 更新。")
+        _show_library_gaps()
         return
 
     if args[0] == "update":
