@@ -103,7 +103,7 @@ def save_users(users: dict) -> None:
 
 # ---------------------------------------------------------------- 配置文件
 
-def load_config(path: str = None) -> dict:
+def load_config(path: str | None = None) -> dict:
     config = dict(DEFAULT_CONFIG)
     data = _read_json(path or CONFIG_FILE, {})
     if isinstance(data, dict):
@@ -117,7 +117,7 @@ def load_config(path: str = None) -> dict:
     return config
 
 
-def save_config(config: dict, path: str = None) -> None:
+def save_config(config: dict, path: str | None = None) -> None:
     _write_json(path or CONFIG_FILE, config)
 
 
@@ -181,7 +181,7 @@ def create_profile(name: str) -> dict:
     return users[name]
 
 
-def get_profile(name: str = None) -> dict:
+def get_profile(name: str | None = None) -> dict:
     name = name or active_profile_name()
     profile = load_users().get(name)
     if not isinstance(profile, dict):
@@ -189,7 +189,7 @@ def get_profile(name: str = None) -> dict:
     return profile
 
 
-def profile_locale(name: str = None) -> str:
+def profile_locale(name: str | None = None) -> str:
     try:
         return get_profile(name).get("locale", DEFAULT_LOCALE)
     except RotaOffError:
@@ -208,7 +208,7 @@ def verify_profile(profile: dict) -> tuple:
     return True, "binding-successful"
 
 
-def set_profile_field(key: str, value: str, name: str = None) -> tuple:
+def set_profile_field(key: str, value: str, name: str | None = None) -> tuple:
     """保存一个字段，返回 (真实字段名, 是否可用, 消息键)。
 
     这里的 `key` 是用户敲的原文，`server` / `serverCode` / `SERV ER` 之类
@@ -236,7 +236,7 @@ def set_profile_field(key: str, value: str, name: str = None) -> tuple:
     return field, verified, message_key
 
 
-def require_ready_profile(name: str = None) -> dict:
+def require_ready_profile(name: str | None = None) -> dict:
     """取一个已经绑定完毕、可以发请求的配置。"""
     profile = get_profile(name)
     verified, key = verify_profile(profile)
@@ -268,26 +268,26 @@ def _normalize_task(task: dict) -> dict:
     return task
 
 
-def load_tasks(path: str = None) -> list:
+def load_tasks(path: str | None = None) -> list:
     tasks = load_config(path).get("tasks") or []
     return [_normalize_task(task) for task in tasks]
 
 
-def save_tasks(tasks: list, path: str = None) -> list:
+def save_tasks(tasks: list, path: str | None = None) -> list:
     config = load_config(path)
     config["tasks"] = list(tasks)
     save_config(config, path)
     return config["tasks"]
 
 
-def add_task(task: dict, path: str = None) -> int:
+def add_task(task: dict, path: str | None = None) -> int:
     tasks = load_tasks(path)
     tasks.append(task)
     save_tasks(tasks, path)
     return len(tasks)
 
 
-def remove_task(index: int, path: str = None) -> dict:
+def remove_task(index: int, path: str | None = None) -> dict:
     tasks = load_tasks(path)
     if not 1 <= int(index) <= len(tasks):
         raise RotaOffError(t("task-not-found", task=index))

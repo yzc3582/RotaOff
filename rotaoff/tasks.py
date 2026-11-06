@@ -10,6 +10,7 @@
 """
 
 import time
+from typing import cast
 
 import rotaeno
 
@@ -117,6 +118,7 @@ def _task_custom(task: dict, render_image: bool) -> dict:
         "profile": profile_name,
         "raw": metrics,
         "image": image,
+        "change_summary": data.change_summary(snapshot),
     }
 
 
@@ -142,6 +144,7 @@ def _task_b40(task: dict, render_image: bool) -> dict:
         "profile": profile_name,
         "raw": snapshot,
         "image": image,
+        "change_summary": data.change_summary(snapshot),
     }
 
 
@@ -201,8 +204,11 @@ def _task_song_status(task: dict, render_image: bool) -> dict:
         raise RotaOffError(t("unavailable-song-status", locale, song_status=status))
 
     profile = require_ready_profile(profile_name)
-    song_datas = data.quiet_call(
-        rotaeno.processor.get_song_status, profile, song_status=status, just_data=True
+    song_datas = cast(
+        list,
+        data.quiet_call(
+            rotaeno.processor.get_song_status, profile, song_status=status, just_data=True
+        ),
     )
     song_datas = _check_diff(song_datas, task, locale)
     rows = [
@@ -251,12 +257,15 @@ def _task_song_rtr(task: dict, render_image: bool) -> dict:
     span = f"≥{low:g}" if high >= LEVEL_MAX_UNBOUNDED else f"{low:g} ~ {high:g}"
 
     profile = require_ready_profile(profile_name)
-    song_datas = data.quiet_call(
-        rotaeno.processor.get_song_rtr,
-        profile,
-        song_level_num_range=(low, high),
-        song_sort_type=sort,
-        just_data=True,
+    song_datas = cast(
+        list,
+        data.quiet_call(
+            rotaeno.processor.get_song_rtr,
+            profile,
+            song_level_num_range=(low, high),
+            song_sort_type=sort,
+            just_data=True,
+        ),
     )
     song_datas = _check_diff(song_datas, task, locale)
     rows = [
@@ -388,8 +397,12 @@ def describe_task(task: dict, index: int = 0) -> str:
     return f'{head}[{kind}] {task.get("name") or "(未命名)"}  {detail}{tail}'.rstrip()
 
 
-def run_task(task: dict, render_image: bool = None, formats=None) -> dict:
-    """执行一条任务：取数据 -> 组结果 -> 可选导出文本 / 图片。"""
+def run_task(task: dict, render_image: bool | None = None, formats=None,
+             report_changes: bool = True) -> dict:
+    """执行一条任务：取数据 -> 组结果 -> 可选导出文本 / 图片。
+
+    `report_changes=False` 用于 `update`：它自己会完整报告变化，避免摘要重复。
+    """
     kind = str(task.get("type") or "").strip().lower()
     builder = TASK_BUILDERS.get(kind)
     if builder is None:
@@ -404,6 +417,8 @@ def run_task(task: dict, render_image: bool = None, formats=None) -> dict:
     result["type"] = kind
     result["name"] = task.get("name") or result.get("title") or kind
     result["elapsed"] = round(time.time() - started, 2)
+    if not report_changes:
+        result["change_summary"] = ""
 
     task_settings = dict(settings)
     if task.get("export") is not None:
@@ -420,7 +435,7 @@ def run_task(task: dict, render_image: bool = None, formats=None) -> dict:
     return result
 
 
-def run_tasks(tasks: list = None, render_image: bool = None, formats=None, on_result=None) -> list:
+def run_tasks(tasks: list | None = None, render_image: bool | None = None, formats=None, on_result=None) -> list:
     """依次执行任务；单条失败只记录错误，不影响后面的任务（错误隔离）。"""
     tasks = tasks if tasks is not None else store_tasks()
     results = []

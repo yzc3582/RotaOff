@@ -57,6 +57,20 @@ Queries (results are printed unless `output` export is enabled):
 | `status [FC\|AP\|APP\|CLEAR\|...]` | list charts by play status |
 | `rtr <min> <max> [sort]` | level range; sort = `rating` / `score` / `level` |
 | `custom [fields...]` | custom fields, e.g. `custom username rating level completion` |
+| `update` / `refresh` | download the cloud save once and report Rating / per-chart changes since the previous snapshot |
+
+Snapshot and change fields (usable through `custom`, `task add`, and `update`):
+
+| Field | Meaning |
+| --- | --- |
+| `cloud_updated_at` | the CloudSave object's `updatedAt` — when the game synced the save to TapTap (converted to local time); the field that says whether data is fresh |
+| `fetched_at` | when this machine downloaded the save; changes on every run |
+| `rating_diff` | e.g. `14.7025+0.0094`; zero delta still prints `+0.0000`; the first record prints `首次记录，下次起可对比` |
+| `songs_diff` | e.g. `Title (IV): 1,001,551 → 1,006,012 (+4,461)｜13.7551 → 14.5020｜NONE(C) → AP(-)`; `无变化` when nothing moved |
+
+Every query still downloads the save in real time. A successful download overwrites `data/saves/<profile>.json` (`playerInfo + songDatas + fetchedAt`, latest copy only); a failed download never overwrites it. Status suffixes: `(C)` = cleared, `(-)` = not cleared, so `NONE(-)` means never played / not cleared and `AP(-)` is possible historical dirty data.
+
+Change reporting: `tui.py` appends one summary line after `b40` / `custom` when the save changed (e.g. `云存档有变化：Rating 14.7025+0.0094，2 个谱面有变化`); `update` reports the full detail itself and skips that line. `run_tasks.py` sends change summaries, round messages, failures and warnings to **stderr**, keeping stdout for result data only. `song` / `status` / `rtr` do not run the snapshot diff yet.
 
 Tasks (stored in `data/tasks.json`, can be run by `run_tasks.py`):
 
@@ -97,7 +111,7 @@ Other:
 | Prompt | Notes |
 | --- | --- |
 | Task type (`custom` / `b40` / `song_info` / `song_status` / `song_rtr`) | default `custom` |
-| Fields (comma separated, one of `username`, `rating`, `level`, `exp`, `completion`, `app`, `ap`, `fc`, `charts`, `playtime`, `b40`) | `custom` only, default `rating` |
+| Fields (comma separated, one of `username`, `rating`, `level`, `exp`, `completion`, `app`, `ap`, `fc`, `charts`, `playtime`, `b40`, `cloud_updated_at`, `fetched_at`, `rating_diff`, `songs_diff`) | `custom` only, default `rating` |
 | Line template (`{label}` / `{value}`, empty = `{label}: {value}`) | `custom` only |
 | Song title or alias | `song_info` only |
 | Status (`NONE` / `FC` / `AP` / `APP` / `CLEAR` / `NOTCLEAR` / `FAVORITE` / `NOTFAVORITE`) | `song_status` only, default `FC` |
@@ -121,6 +135,8 @@ Other:
 | `有 N 张谱面缺少定数: …` | same case, but the task had `"strict": true`, so it aborts |
 | `图片渲染已跳过（…）` | image rendering failed or chromium is missing; text output is unaffected |
 | `未知字段: …` / `未知任务类型: …` / `未知输出设置: …` | unknown custom field / task type / output setting |
+| `首次记录，下次起可对比` | first snapshot for this profile; run `update` again later to get a diff |
+| `无变化` | the save was downloaded successfully but nothing changed since the previous snapshot |
 | `找不到歌曲: …` / `没有这首歌的成绩: …` | song alias not found / no score data for this song |
 | `已有 RotaOff 在运行` | (see the first row) |
 | `再见，记得休息一下眼睛。` | goodbye |

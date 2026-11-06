@@ -131,9 +131,11 @@ def _ask(label: str, default: str = "") -> str:
     return text or default
 
 
-def _run(task: dict) -> dict:
-    result = tasks.run_task(task)
+def _run(task: dict, report_changes: bool = True) -> dict:
+    result = tasks.run_task(task, report_changes=report_changes)
     ui.render_result(result)
+    if result.get("change_summary"):
+        ui.info(result["change_summary"])
     for path in result.get("files", []):
         ui.ok(f"已写入: {path}")
     return result
@@ -258,7 +260,7 @@ def cmd_update(args) -> None:
         name="Update",
         fields=["cloud_updated_at", "fetched_at", "rating_diff", "songs_diff"],
         layout="{label}: {value}",
-    ))
+    ), report_changes=False)
 
 
 def cmd_custom(args) -> None:

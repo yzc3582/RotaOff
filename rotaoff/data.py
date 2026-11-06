@@ -20,6 +20,7 @@ import requests
 
 import rotaeno
 
+from . import patch
 from .paths import LIBRARY_GAPS_FILE, SAVES_DIR
 from .store import RotaOffError, active_profile_name, require_ready_profile
 
@@ -300,13 +301,22 @@ def store_previous(profile_name: str, snapshot: dict) -> bool:
 
 
 def cloud_updated_at(snapshot: dict) -> str:
-    """云存档更新时间（服务器的 `updatedAt`）：游戏把存档同步到 TapTap 的时刻。
+    """云存档更新时间（CloudSave 对象的 `updatedAt`）：游戏把存档同步到 TapTap 的时刻。
 
+    服务器返回的是 UTC（`...Z`），这里转成运行机器的本地时区再展示；
     与本地时钟无关，也**不是**我们这次拉取的时间（那个是 `fetchedAt`，每次都变）。
     判断「有没有新数据」只看这个。
     """
     raw = str((snapshot.get("playerInfo") or {}).get("updateAt") or "")
-    return raw.replace("T", " ")[:19]
+    if not raw:
+        return ""
+    try:
+        moment = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return raw.replace("T", " ")[:19]
+    if moment.tzinfo is not None:
+        moment = moment.astimezone()
+    return moment.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def diff_snapshots(snapshot: dict, previous: dict) -> dict:
@@ -390,7 +400,25 @@ def _format_songs_diff(diff: dict, limit: int = 0) -> str:
     return "\n".join(lines)
 
 
-def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dict:
+def change_summary(snapshot: dict) -> str:
+    """一行变化摘要，供查询命令顺手提示；没变化或首次记录返回空串。
+
+    真正的明细仍由 `rating_diff` / `songs_diff` 提供，这里只负责「有没有变、变了多少」。
+    """
+    diff = (snapshot or {}).get("diff") or {}
+    if not diff or diff.get("first_time"):
+        return ""
+    songs = diff.get("songs") or []
+    before, now = diff.get("rating") or (None, None)
+    if not songs and before == now:
+        return ""
+    parts = [f"Rating {float(now or 0):.4f}{float(now or 0) - float(before or 0):+.4f}"]
+    if songs:
+        parts.append(f"{len(songs)} 个谱面有变化")
+    return "云存档有变化：" + "，".join(parts)
+
+
+def fetch_snapshot(profile_name: str | None = None, record_history: bool = True) -> dict:
     """一次请求拿到 playerInfo + songDatas。
 
     `taptap_processor` 在解析时会对本地曲库没收录的曲目 `print(...)` 一行，
@@ -419,10 +447,14 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
             f"诊断:\n{_probe_response(api, profile)}"
         )
     finally:
-        fetch_snapshot.last_noise = buffer.getvalue().strip()
+        setattr(fetch_snapshot, "last_noise", buffer.getvalue().strip())
         _remember_upstream(buffer.getvalue())
 
     # 顺序要紧：先跟上一份比，再覆盖写。反了就会永远对比到「无变化」。
+    info = snapshot.get("playerInfo")
+    if isinstance(info, dict):
+        # 上游 `get_cloud_save` 不返回 CloudSave 的 updatedAt，由 patch 在出口截获
+        info["updateAt"] = patch.last_cloud_save_updated_at()
     snapshot["fetchedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     snapshot["diff"] = diff_snapshots(snapshot, previous)
     store_previous(name, snapshot)
@@ -450,7 +482,7 @@ def total_chart_count() -> int:
     if cached is None:
         songs = rotaeno.database.song_data.song_data.get_songs_rating_real_range(0, 9999)
         cached = sum(len(song["levels"]) for song in songs)
-        total_chart_count.cached = cached
+        setattr(total_chart_count, "cached", cached)
     return cached
 
 

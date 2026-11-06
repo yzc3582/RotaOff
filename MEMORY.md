@@ -146,6 +146,32 @@
   `{songs, levels}`，由 `library` 命令底部展示。**注意**：记录是进程内的，
   所以要先查一次存档，`library` 才有内容可显示。
 
+## 存档快照与变化（2026-11-06 第二次接力）
+
+- 所有命令仍然**实时下载**云存档，不读缓存。`update`（别名 `refresh`）只是「单独下载 + 对比」。
+- 每次成功下载后把 `playerInfo + songDatas + fetchedAt` 覆盖写到 `data/saves/<配置名>.json`，只留最近一份。
+  已复核：下载异常在 `store_previous()` 之前抛出，**失败不会覆盖历史快照**；落盘失败也只是返回 False。
+- 四个新字段（`CUSTOM_LABELS` 里已有）：`cloud_updated_at`（**CloudSave 对象的 `updatedAt`**，判断新鲜度看它）、
+  `fetched_at`（本地拉取时间）、`rating_diff`、`songs_diff`。
+- **云存档时间的来源（2026-11-06 实测修正）**：`get_cloud_save` 返回的 `playerInfo` **没有** `updateAt`，
+  它来自 `results[0].updatedAt`（LeanCloud 对象元数据，UTC，形如 `2026-11-06T14:12:31.280Z`）。
+  `rotaoff/patch.py` 在父类 `UserAPI.get_cloud_save` 出口截获并记到 `last_cloud_save_updated_at()`，
+  `fetch_snapshot` 再写回 `playerInfo["updateAt"]`；`cloud_updated_at()` 用 `fromisoformat` + `astimezone()`
+  转本地时区展示（实测 UTC 14:12:31 → 本地 22:12:31）。
+  **别再记错**：`taptap_processor.py:272` 的 `updateAt = user_data["updatedAt"]` 在 `get_user_data` 里，
+  是用户资料的更新时间，不是云存档，快照路径根本走不到那里。
+- `rating_diff` 与 RotaBot 兼容：`14.7025+0.0094`，零增量也打 `+0.0000`；首次是「首次记录，下次起可对比」。
+  `songs_diff` 无变化时字段是「无变化」，**整块是否输出由上层决定**，不要在格式化函数里省掉 Rating 行。
+- 状态列统一带后缀：已通关 `(C)`、未通关 `(-)`。`Flag` 与 `isCleared` 独立，`AP(-)` 可能出现。
+- **自动摘要（2026-11-06 已定案）**：用户要的是「交互模式打摘要，自动化写 stderr」。
+  - `data.change_summary(snapshot)` 只给一行，无变化/首次返回空串，明细仍靠 `rating_diff` / `songs_diff`。
+  - `custom` / `b40` 的结果带 `change_summary`；`run_task(..., report_changes=False)` 给 `update` 用，避免重复报告。
+  - `tui.py` 的 `_run()` 把摘要打 stdout；`run_tasks.py` 的摘要、轮次、失败、警告全部打 **stderr**，
+    stdout 只留结果数据（表格 / `--quiet` 行 / 导出路径）。
+  - `song` / `status` / `rtr` 直连上游、不经过 `fetch_snapshot` 的 diff，所以暂时没有自动摘要。
+  - `ui.info/ok/warn/error` 现在接受 `stream=`；`ui._emit` 会按目标流是否 tty 决定要不要 ANSI 码，
+    别再用 `print(..., file=sys.stderr)` 绕过颜色判断。
+
 ## 选择语义（最容易记错的地方）
 
 以 `docs/filter.yzc3582.fake.cpp` 为准：初始集合是 `*`；每个 `--task` 开新段（先把「被动过的」当前段收进 `segments`），`--filter` 只筛当前段，最后取并集。
@@ -167,6 +193,20 @@
 
 - 一次调用里同时跑「写锁」和「删锁」的两条命令会并行执行，测试结果会互相破坏；涉及副作用的验证要串行。
 - `%errorlevel%` 在同一条 `&` 命令里会被提前展开，判断退出码要写成 `命令 & if errorlevel 1 (...)`。
+
+## pyright 与类型标注（2026-11-06 第二次接力）
+
+- 接力时 `pyright rotaoff\data.py rotaoff\tasks.py tui.py` 是 **18 errors / 1 warning**；本轮新增项已全部清零。
+- 之前用户拒绝「只改一处 `profile_name: str = None`」，要求全仓一致。本轮把 `rotaoff/` 下 **23 处**
+  `X = None` 统一成 `X | None`（纯标注，不动逻辑），并删掉 `.gitignore` 里重复的 `data/saves/`。
+- 函数挂属性改用 `setattr`：`fetch_snapshot.last_noise`、`total_chart_count.cached`。
+- `quiet_call()` 的返回值受上游 `str | dict` 注解影响；`just_data=True` 实际是 list，
+  在两个调用处用 `cast(list, ...)` 收窄，不改运行时。
+- `resolve_output_dir` 签名放宽成 `str | None`，连带消掉 `tui.py` / `output.py` 的调用报错。
+- **仍剩既有项，别再当成本轮新 bug**：`tasks.py:164`（上游 `get_song` 注解）、
+  `tasks.py` 的 `task` 字面量被推断成 `dict[str, str]`（给 `task: dict` 宽标注可一次消掉）、
+  `tui.py` / `run_tasks.py` 的 `TextIO.reconfigure`、`library.py` / `patch.py` 的模块属性赋值。
+  `requests` 的 warning 是缺 stub，忽略。
 
 ## 验证过的命令
 
@@ -198,9 +238,9 @@ Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不
 - `output/` 里的历史文件没有清理策略。
 - 曲名带空格时只走精确匹配 + 模糊回退，没有别名表。
 
-**4. 文档同步**：新增 `library` 系列命令后，`HELP_ZH`/`HELP_EN`、`README(.zh_CN)`、
-`docs/py-all-in-one.en_US.md` 是否都覆盖了 `library` / `library update` / `library source`；
-以及 `profile set` 现在认短名和任意大小写这件事，也应写进英文汇总。
+**4. 文档同步**：`library` 系列与快照字段已写进 `HELP_ZH`/`HELP_EN`、两版 `README`、
+`docs/py-all-in-one.en_US.md`（2026-11-06 第二次接力已补齐 `update` / 四个字段 / `(C)(-)`）；
+`profile set` 认短名和任意大小写仍应留在英文汇总里。
 
 ## 暂停后的待办队列（按用户定的顺序）
 
@@ -209,12 +249,13 @@ Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不
 `else: raise ValueError("Invalid region")`——上游 Discord 版的「私有服务器」选项本身就是半成品，
 我们没有支持它，不是砍功能。
 
-**1. `/r update` 等价物（QQ 端 RotaBot 有，Discord 上游没有）**
+**1. `/r update` 等价物（QQ 端 RotaBot 有，Discord 上游没有）——已实现**
 - QQ 端那个 `/r update` 拉的是**云存档**，不是曲库；QQ 端会缓存用户数据，所以才需要手动刷新。
 - 本项目每条命令都实时拉云存档，缺的不是「拉数据」，而是**显式刷新/缓存语义 + 让用户看见新鲜度**。
-- 同一批要做：**结果里显示 `TIME`（云存档同步时间）**。数据已经存在：
-  `taptap_processor.py:272` 产出 `updateAt = user_data["updatedAt"]`，全仓库无人消费
-  （`findstr updateAt` 只有这一处），所以这一步基本是展示层改动。
+- 已做：`tui.py` 的 `update`/`refresh` + `cloud_updated_at` / `fetched_at` / `rating_diff` / `songs_diff`。
+  云存档时间的正确来源与踩坑见上面「存档快照与变化」。
+- 剩下的是**未决设计**：其它命令下载后检测到变化时是否自动打一行摘要（见上面「存档快照与变化」，
+  2026-11-06 已定案：交互 stdout、自动化 stderr）。
 - 排在 Anubis 之前。
 
 **2. Anubis PoW 拆成独立模块**：目前内嵌在 `library.py`，下架曲目功能要复用同一套

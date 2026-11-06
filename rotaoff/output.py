@@ -46,8 +46,8 @@ def set_output_field(key: str, value) -> dict:
     return settings
 
 
-def resolve_output_dir(path: str = "") -> str:
-    path = path or output_settings().get("dir") or "output"
+def resolve_output_dir(path: str | None = "") -> str:
+    path = path or str(output_settings().get("dir") or "output")
     return path if os.path.isabs(path) else os.path.join(BASE_DIR, path)
 
 
@@ -107,7 +107,7 @@ def export_text(result: dict, fmt: str) -> str:
     return "\n".join(lines + [""] + body) + "\n"
 
 
-def export_result(result: dict, formats=None, settings: dict = None) -> list:
+def export_result(result: dict, formats=None, settings: dict | None = None) -> list:
     """把文本结果写成文件；返回生成的文件路径列表。"""
     settings = settings or output_settings()
     if formats is None:

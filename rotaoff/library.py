@@ -469,7 +469,7 @@ def _version_key(text: str) -> list:
     return parts
 
 
-def update(local: bool = False, path: str = None) -> dict:
+def update(local: bool = False, path: str | None = None) -> dict:
     """更新 data/song_data.db。
 
     local=True 时只读本地文件（不联网）；否则先自动抓，失败再回退本地文件。

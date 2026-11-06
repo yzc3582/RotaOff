@@ -59,6 +59,7 @@ Three steps:
 | `status [FC\|AP\|APP\|...]` | list charts by play status |
 | `rtr <min> [max] [sort]` | level range, sort = rating/score/level |
 | `custom [fields...]` | custom fields, e.g. `custom username rating level` |
+| `update` / `refresh` | download the cloud save once and report Rating / per-chart changes since the previous snapshot |
 | `tasks` / `task add` / `task rm <index>` / `task run [selection]` | task management |
 | `output` / `output set <key> <value>` | output settings (dir, export formats, filename template, image toggle) |
 | `library` / `library update [--local]` / `library source <path>` | song library: inspect, rebuild online or offline, repoint the source |
@@ -169,6 +170,25 @@ To keep layer 2 permanently available, grab a copy by hand:
 The rebuilt library lands in `data/song_data.db` (same schema as upstream: `songs` + `song_levels`); after the first build every start reads it directly and never touches the network. If `data/` is not writable the program degrades to an **in-memory library** (works for this session, must be rebuilt next time) and says so loudly.
 
 That file is **not committed** (see `.gitignore`): it is derived data, and its content belongs to the wiki contributors. Rebuilding it takes one command.
+
+## Save snapshots and changes
+
+Every query still **downloads the cloud save in real time** and never reads a local cache. So that “what changed since last time?” can be answered, each successful download overwrites `data/saves/<profile>.json` with `playerInfo + songDatas + fetchedAt`, keeping only the latest copy; **a failed download never overwrites the previous snapshot**.
+
+Run `update` (alias `refresh`) to ask for the comparison explicitly — it only does “download + diff”, with no caching semantics.
+
+- `cloud_updated_at` — the CloudSave object's `updatedAt` (converted to your machine's local time), i.e. when the game synced the save to TapTap; this is the field that tells you whether there is new data
+- `fetched_at` — when this machine downloaded it; changes on every run
+- `rating_diff` — e.g. `14.7025+0.0094`; a zero delta is still printed as `+0.0000`, and the first record says “first snapshot, comparable from next time”
+- `songs_diff` — e.g. `Title (IV): 1,001,551 → 1,006,012 (+4,461)｜13.7551 → 14.5020｜NONE(C) → AP(-)`; “no changes” when nothing moved
+
+Status always carries a suffix: `(C)` = cleared, `(-)` = not cleared. The `Flag` and whether a chart is cleared are independent facts, so `AP(-)` (an AP flag on a chart the save reports as not cleared) can legitimately show up as historical dirty data; it is not a display bug. `NONE(-)` means never played or not cleared.
+
+How changes are surfaced:
+
+- **Interactive** (`tui.py`): after a download, `b40` / `custom` append a one-line summary when the save differs from the previous snapshot (e.g. `云存档有变化：Rating 14.7025+0.0094，2 个谱面有变化`); nothing is printed when nothing changed. `update` already reports the full detail, so it does not append the summary again.
+- **Automation** (`run_tasks.py`): change summaries, round messages, failures and warnings **all go to stderr**; stdout keeps result data only (tables, `--quiet` lines, exported file paths), so pipes and OBS never get interleaved status noise.
+- `song` / `status` / `rtr` still call upstream processors directly and do not run the snapshot diff, so they do not produce the automatic summary yet.
 
 ## Documentation
 

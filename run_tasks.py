@@ -76,13 +76,15 @@ def run_once(selected: list, args) -> int:
     failures = 0
     for result in tasks.run_tasks(selected, render_image=args.image, formats=args.save):
         if not result.get("ok"):
-            ui.error(f'{result["name"]}: {result["error"]}')
+            ui.error(f'{result["name"]}: {result["error"]}', stream=sys.stderr)
             failures += 1
             continue
         if args.quiet:
             ui.ok(f'{result["name"]}  {result["elapsed"]}s')
         else:
             ui.render_result(result)
+        if result.get("change_summary"):
+            ui.info(result["change_summary"], stream=sys.stderr)
         for path in result.get("files", []):
             ui.ok(f"已写入: {path}")
     return failures
@@ -109,14 +111,14 @@ def main(argv=None) -> int:
     all_tasks = store.load_tasks()
     if args.list:
         if not all_tasks:
-            ui.info("还没有任务，先运行 python tui.py，用 task add 创建。")
+            ui.info("还没有任务，先运行 python tui.py，用 task add 创建。", stream=sys.stderr)
             return 0
         for index, task in enumerate(all_tasks, 1):
             print(tasks.describe_task(task, index))
         return 0
 
     if not all_tasks:
-        ui.warn("data/tasks.json 里没有任务，先运行 python tui.py 配置。")
+        ui.warn("data/tasks.json 里没有任务，先运行 python tui.py 配置。", stream=sys.stderr)
         return 1
 
     lock.acquire("automation", force=args.force)
@@ -128,7 +130,7 @@ def main(argv=None) -> int:
     selected = select.apply_selection(all_tasks, ops)
 
     if not selected:
-        ui.warn("没有任务被选中，检查 --task / --filter 的写法。")
+        ui.warn("没有任务被选中，检查 --task / --filter 的写法。", stream=sys.stderr)
         return 1
 
     if args.dry_run:
@@ -142,15 +144,22 @@ def main(argv=None) -> int:
     if interval <= 0:
         return 1 if run_once(selected, args) else 0
 
-    ui.info(f"自动化启动：每 {interval} 秒执行 {len(selected)} 个任务，Ctrl+C 停止")
+    ui.info(f"自动化启动：每 {interval} 秒执行 {len(selected)} 个任务，Ctrl+C 停止", stream=sys.stderr)
 
+    round_index = 0
     while True:
+        round_index += 1
+        ui.info(f"[{time.strftime('%H:%M:%S')}] 第 {round_index} 轮开始", stream=sys.stderr)
         failures = run_once(selected, args)
-        ui.info(f"[{time.strftime('%H:%M:%S')}] 本轮结束，失败 {failures} 个，等待 {interval} 秒")
+        ui.info(
+            f"[{time.strftime('%H:%M:%S')}] 第 {round_index} 轮结束，"
+            f"失败 {failures} 个，等待 {interval} 秒",
+            stream=sys.stderr,
+        )
         try:
             time.sleep(interval)
         except KeyboardInterrupt:
-            ui.info("已停止自动化。")
+            ui.info("已停止自动化。", stream=sys.stderr)
             return 0
 
 
@@ -161,5 +170,5 @@ if __name__ == "__main__":
         print()
         sys.exit(130)
     except RotaOffError as error:
-        ui.error(str(error))
+        ui.error(str(error), stream=sys.stderr)
         sys.exit(1)

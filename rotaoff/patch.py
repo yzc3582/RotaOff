@@ -45,19 +45,46 @@ def _request(self, method: str, endpoint: str, **kwargs) -> dict:
         )
 
 
-def _get(self, endpoint: str, params: dict = None) -> dict:
+def _get(self, endpoint: str, params: dict | None = None) -> dict:
     return _request(self, "GET", endpoint, params=params)
 
 
-def _post(self, endpoint: str, data: dict = None) -> dict:
+def _post(self, endpoint: str, data: dict | None = None) -> dict:
     return _request(self, "POST", endpoint, json=data)
 
 
-def _put(self, endpoint: str, data: dict = None) -> dict:
+def _put(self, endpoint: str, data: dict | None = None) -> dict:
     return _request(self, "PUT", endpoint, json=data)
 
 
 _installed = False
+_LAST_CLOUD_SAVE_UPDATED_AT = ""
+
+
+def last_cloud_save_updated_at() -> str:
+    """最近一次 CloudSave 请求里 `results[0].updatedAt`（LeanCloud 对象修改时间）。"""
+    return _LAST_CLOUD_SAVE_UPDATED_AT
+
+
+def _capture_cloud_save_time(original):
+    """记下 CloudSave 对象的 `updatedAt`，供快照展示云端同步时间。
+
+    上游子类 `TapTapAPI.get_cloud_save` 只返回 `playerInfo` / `songDatas`，
+    把 `results[0]` 元数据里的 `updatedAt` 丢掉了；`get_user_data` 里的
+    `updateAt` 是用户资料的时间，**不是**云存档。所以在父类出口截一下。
+    """
+
+    def get_cloud_save(self, *args, **kwargs):
+        global _LAST_CLOUD_SAVE_UPDATED_AT
+        response = original(self, *args, **kwargs)
+        try:
+            _LAST_CLOUD_SAVE_UPDATED_AT = str(response["results"][0].get("updatedAt") or "")
+        except (KeyError, IndexError, TypeError):
+            _LAST_CLOUD_SAVE_UPDATED_AT = ""
+        return response
+
+    setattr(get_cloud_save, "_captures_updated_at", True)
+    return get_cloud_save
 
 
 # 上游把临时文件 / 存档写死在 `rotaeno/` 里面，而仓库里并没有 `saves/`、`temp/`：
@@ -75,7 +102,7 @@ UPSTREAM_DIRS = {
 }
 
 
-def _candidate_roots(root: str = None) -> list:
+def _candidate_roots(root: str | None = None) -> list:
     """按优先级列出可以放上游临时文件的位置。
 
     `data/` 是首选（和其余数据放一起）；它不可写时（只读安装目录、企业环境、
@@ -93,7 +120,7 @@ def _candidate_roots(root: str = None) -> list:
     return roots
 
 
-def redirect_upstream_dirs(root: str = None) -> list:
+def redirect_upstream_dirs(root: str | None = None) -> list:
     """把上游写死的输出目录改到可写位置，返回仍然失败的目录（不抛异常）。
 
     这些常量是在函数里按模块全局名查找的，所以运行时改掉就生效，
@@ -143,7 +170,7 @@ def _tolerant_add_player(original):
     return add_player
 
 
-def redirect_player_history(root: str = None) -> dict:
+def redirect_player_history(root: str | None = None) -> dict:
     """把 `player_data` 指到可写目录，并让写失败变成警告。
 
     与 `song_data` 一样，这里也有**两个模块对象**：
@@ -181,6 +208,9 @@ def install() -> None:
         return
     api = rotaeno.api.taptap.BaseAPI
     api.get, api.post, api.put = _get, _post, _put
+    user_api = rotaeno.api.taptap.UserAPI
+    if not getattr(user_api.get_cloud_save, "_captures_updated_at", False):
+        user_api.get_cloud_save = _capture_cloud_save_time(user_api.get_cloud_save)
     try:
         redirect_upstream_dirs()
     except Exception:                 # noqa: BLE001 - 目录不可写不该拦住启动

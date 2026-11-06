@@ -55,20 +55,31 @@ def display_width(text: str) -> int:
     return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1 for ch in text)
 
 
-def info(message: str) -> None:
-    print(paint(message, DIM))
+def _emit(message: str, *codes: str, stream=None) -> None:
+    """按目标流决定是否上色：重定向到文件 / 管道的 stderr 不该混入 ANSI 码。"""
+    target = stream or sys.stdout
+    try:
+        colored = COLOR and target.isatty()
+    except Exception:
+        colored = False
+    text = "".join(codes) + str(message) + RESET if colored and codes else str(message)
+    print(text, file=target)
 
 
-def ok(message: str) -> None:
-    print(paint("✔ " + message, GREEN))
+def info(message: str, stream=None) -> None:
+    _emit(message, DIM, stream=stream)
 
 
-def warn(message: str) -> None:
-    print(paint("! " + message, YELLOW))
+def ok(message: str, stream=None) -> None:
+    _emit("✔ " + message, GREEN, stream=stream)
 
 
-def error(message: str) -> None:
-    print(paint("✘ " + message, RED))
+def warn(message: str, stream=None) -> None:
+    _emit("! " + message, YELLOW, stream=stream)
+
+
+def error(message: str, stream=None) -> None:
+    _emit("✘ " + message, RED, stream=stream)
 
 
 def banner(title: str, subtitle: str = "") -> None:
@@ -112,7 +123,7 @@ def table_lines(
     columns,
     rows,
     aligns=None,
-    limit: int = None,
+    limit: int | None = None,
     max_width: int = 46,
     footer: bool = True,
     footer_text: str = "  共 {total} 条，这里只显示前 {limit} 条",
@@ -152,7 +163,7 @@ def table_lines(
     return lines
 
 
-def table(columns, rows, aligns=None, limit: int = None, max_width: int = 46,
+def table(columns, rows, aligns=None, limit: int | None = None, max_width: int = 46,
           empty_text: str = "（没有数据）", footer: bool = True) -> None:
     """打印一张等宽表格；limit 只影响显示，不裁剪数据本身。"""
     if not rows:
