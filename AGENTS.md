@@ -10,3 +10,29 @@
 - 同步提供相应的 requirements.txt 及 install_env.bat/sh，省去用户装依赖的麻烦。
 
 提示：`MEMORY.md` 存放记忆、经验等。你可以在需要的时候对其读写。
+
+## 当前状态（2026-11-06）
+
+- 入口：`tui.py`（配置 + 交互）、`run_tasks.py`（纯自动化）、`bot.py`（3 行启动器）。
+- 交接文档：`MaterialsForAI/第三次暂歇文档.md`（下一阶段从这里读）。
+- 当前停在 **Anubis 之前**：下一步才是把 PoW 抽成 `rotaoff/anubis.py`，
+  之后才是下架曲目排除出 B40。**没有明确指令不要提前开工。**
+
+## 硬约束
+
+- `rotaeno/` 只读：只允许随游戏版本改公式（如 Rating 补丁），其它一律在 `rotaoff/` 运行期注入。
+- 数据来源（`Songlist.json`、`data/song_data.db`、`wiki/`）版权归 Rotaeno 中文维基，**不入库**。
+- 快照只用于对比，不当缓存；`update` 只是「下载 + 对比」，其它命令仍实时取数。
+- 自动化 `stdout` 只放数据；摘要 / 轮次 / 失败 / 警告走 `stderr`。
+- 用户可见文案改动要同步 `README.md`、`README.zh_CN.md`、`docs/py-all-in-one.en_US.md`。
+- 中文回复、简短、一次一个原子改动；用户自己 commit/push。
+
+## 常用命令
+
+```bat
+.venv\Scripts\python tui.py
+.venv\Scripts\python run_tasks.py --list
+.venv\Scripts\python run_tasks.py --dry-run
+.venv\Scripts\python .scratch\test_snapshot_diff.py
+pyright rotaoff\data.py rotaoff\tasks.py rotaoff\patch.py tui.py run_tasks.py
+```

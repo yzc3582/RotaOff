@@ -208,6 +208,22 @@
   `tui.py` / `run_tasks.py` 的 `TextIO.reconfigure`、`library.py` / `patch.py` 的模块属性赋值。
   `requests` 的 warning 是缺 stub，忽略。
 
+## 收尾检查（2026-11-06 23:30）
+
+- `py_compile` 全部入口与 `rotaoff/*.py` 通过；`.scratch/test_snapshot_diff.py` → OK。
+- `pyright` 对 8 个主文件是 **12 errors / 2 warnings**，全部是既有项（`tasks.py` 9 个、
+  `patch.py` 2 个、`tui.py` / `run_tasks.py` 各 1 个），本轮新增为 0。
+- 真实 `update`（无云存档更新）：时间仍为 `2026-11-06 23:21:46`，`14.7025+0.0000`、无变化。
+- `library`：`built=True`，434 首 / 1770 谱面 / 34 IV-α。
+- 用户自己的 `tui` 实例仍持锁（pid 29860，23:19:59 启动）；`run_tasks.py --force --dry-run` 通过。
+- **状态：停在 Anubis 之前。** 交接细节见 `MaterialsForAI/第三次暂歇文档.md`。
+- 无后台复检（同日 23:40）：`--list` / `--dry-run` / 真实 `--task 2` 均通过；
+  退出后 `.info` 清理，0 字节 `rotaoff.lock` 保留是 filelock 正常行为。
+- 压测（23:37）：55 任务筛 11 个 × 5s × 120s → 22 轮、242 次失败，原因全是沙箱
+  `hit restricted [106.75.60.152:443]` / `WinError 10051`（**subprocess 子进程网络被限制，不是程序 bug**）；
+  60s 对照组同样。进程内脚本 `.scratch/run_pressure_inproc.py` 待跑。
+  `data/tasks.json` 已恢复原 3 任务。
+
 ## 验证过的命令
 
 ```bat
@@ -216,6 +232,7 @@
 .venv\Scripts\python run_tasks.py --task 1,3 --filter "i % 2 == 1" --dry-run
 .venv\Scripts\python run_tasks.py --task 9 --dry-run      :: 退出码 1，提示序号越界
 .venv\Scripts\python run_tasks.py --force --dry-run       :: 已有实例持锁时也能跑
+pyright rotaoff\data.py rotaoff\tasks.py rotaoff\patch.py rotaoff\ui.py rotaoff\store.py rotaoff\output.py tui.py run_tasks.py
 ```
 
 - i18n：`zh-CN.json` 与 `en-US.json` 键集合一致（39 条），缺键会依次回退到 `zh-CN` → 原始 key。
@@ -223,13 +240,13 @@
 
 ## 还没做的（下次从这里继续）
 
-**1. 真实账号的端到端没跑过**（最重要）。patch 修掉双斜杠后只推断到「请求能发出去」，
-还没有一次成功出数的记录。跑 `.venv\Scripts\python tui.py` → `b40`，核对三件事：
-Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不是 0 分；`rtr` 的区间语义。
+**1. 真实账号端到端：已跑通（2026-11-06）**。`b40` / `song` / `rtr` / `update` 都能出数；
+`update` 两次实测云存档时间从 `22:12:31` → `23:21:46`，Rating `14.7025+0.0000`、无变化
+（用户确认期间没打歌）。仍需在**打了歌并破纪录 / 首次通关**后核对一次 `songs_diff` 是否列出那首歌。
 
-**2. 锁：不是 bug（已排除）**。2026-11-06 那次 `已有 RotaOff 在运行: tui (pid 5860)` 是用户自己后台跑的实例忘了关，
+**2. 锁：不是 bug（已排除）**。2026-11-06 两次 `已有 RotaOff 在运行: tui (pid ...)` 都是用户自己后台跑的实例忘了关，
 `filelock` 报得对。**教训**：`--force` 不是「清理陈旧锁」的开关，而是「明知有实例在跑还要并行」——
-两个实例同时写 `output/` 会互相覆盖。真要用，先确认那个 pid 已经退出。
+两个实例同时写 `output/` 会互相覆盖。只读检查（`--dry-run`）可以用 `--force`，会写结果的命令不要并用。
 
 **3. 小问题**
 - `task add` 第一轮实测存进了 `b40,b40,b40`，字段没校验也没去重（这轮未复核是否已加）。
@@ -258,10 +275,21 @@ Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不
   2026-11-06 已定案：交互 stdout、自动化 stderr）。
 - 排在 Anubis 之前。
 
-**2. Anubis PoW 拆成独立模块**：目前内嵌在 `library.py`，下架曲目功能要复用同一套
-「会话 + 挑战流程」，所以先拆再复用。
+**2. Anubis PoW 拆成独立模块（下一阶段第一件事）**：目前内嵌在 `library.py`：
+`fetch_remote()` `:55-98`、`_parse_challenge()` `:101-115`、`_solve_challenge()` `:118-153`，
+常量在 `:42-50`。抽到 `rotaoff/anubis.py`，暴露同步 `fetch_text(...)`，library 只保留
+「文本 → JSON → 校验 songs」。
+- 必须保留：GET → 解析 `<script id="anubis_challenge">`（**内容是双引号字符串，`json.loads` 两次**）
+  → 暴力 `sha256(randomData + i)` 找 `difficulty` 个前导 0 → 提交 `pass-challenge` 时
+  **必须带 `id`**（漏了 HTTP 500 + `techaro.lol-anubis-cookie-verification`）→ 同 Session 再 GET。
+- 验证：离线 mock Session（无挑战 / 有挑战 / 挑战失败）；真实 `library update` 由用户跑。
 
-**3. 下架曲目排除出 b40**：数据源 `wiki/限时上架曲目列表.txt`，仍然只在运行时获取、不进仓库。
+**3. 下架曲目排除出 b40**：数据源 `wiki/限时上架曲目列表.txt`，只在运行时获取、不进仓库。
+- 已确认格式：曲名行 `| -{[[六兆年と一夜物語]]}-`，时间行 `2025/05/30 - 2026/06/30`（可能带 `<ref>`）。
+- 口径：**下架日期 <= 今天**的曲目，全部谱面不计入 Rating / B40；存档仍保留，单曲/状态查询照常可见。
+- 实现放 `rotaoff/data.py`（B40 取值处过滤或把 `ratingMix` 置 0），**不要改 `taptap_processor`**；
+  IV/IV-α 置 0 + 排序逻辑已确认等价，别碰。
+- 只排除已过期的，限时在售的不算；「今天」用本地日期，不要写死。
 
 **上游回推状态**：我们改的两处常数已于 2026-11-06 提交给 `None1145/RotaBot` 的 PR #1
 （标题「借助 wiki.rotaeno.cn，修复上游的 Rating 计算公式」；单补丁分支 `fix/for-upstream`），**未合并**。
