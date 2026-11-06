@@ -11,6 +11,8 @@ CONFIG_FILE = os.path.join(DATA_DIR, "tasks.json")
 LOCALES_DIR = os.path.join(DATA_DIR, "i18n")
 # 存档里对不上本地曲库的记录（song id / 难度键），跨会话保留
 LIBRARY_GAPS_FILE = os.path.join(DATA_DIR, "library_gaps.json")
+# 上一轮下载的存档摘要，只用于「这次和上次比有什么变化」；按账号一文件
+SAVES_DIR = os.path.join(DATA_DIR, "saves")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 
 USERS_EXAMPLE = os.path.join(DATA_DIR, "users.example.json")

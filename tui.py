@@ -29,6 +29,7 @@ HELP_ZH = """
   status [FC|AP|APP|CLEAR|...] 按状态列曲目
   rtr <下限> <上限> [排序]      指定定数区间，排序 = rating/score/level
   custom [字段...]             自定义字段，如 custom username rating level completion
+  update                      下载一次云存档并报告与上次相比的变化（别名 refresh）
 
 任务（保存在 data/tasks.json，可交给 run_tasks.py 自动跑）
   tasks                       列出任务
@@ -70,6 +71,7 @@ Queries (printed in the terminal unless output export is enabled)
   status [FC|AP|APP|CLEAR|...] list charts by play status
   rtr <min> <max> [sort]      level range; sort = rating/score/level
   custom [fields...]          custom fields, e.g. custom username rating level completion
+  update                      download the cloud save once and report changes since last time (alias: refresh)
 
 Tasks (stored in data/tasks.json, can also run by run_tasks.py)
   tasks                       list tasks
@@ -242,6 +244,20 @@ def cmd_rtr(args) -> None:
         level_max=args[1],
         sort=sort,
         template="rtr",
+    ))
+
+
+def cmd_update(args) -> None:
+    """单独下载一次云存档并报告与上次的差异。
+
+    QQ 端 `/r update` 的轻量等价物：只跑「下载 + 对比」，不引入读缓存，
+    其它命令照旧每次实时取数。数据没变时不会报出变化的条目。
+    """
+    _run(tasks.build_task(
+        "custom",
+        name="Update",
+        fields=["cloud_updated_at", "fetched_at", "rating_diff", "songs_diff"],
+        layout="{label}: {value}",
     ))
 
 
@@ -472,6 +488,8 @@ COMMANDS = {
     "status": cmd_status,
     "rtr": cmd_rtr,
     "custom": cmd_custom,
+    "update": cmd_update,
+    "refresh": cmd_update,
     "tasks": cmd_tasks,
     "task": cmd_task,
     "output": cmd_output,

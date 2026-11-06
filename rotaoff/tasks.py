@@ -168,7 +168,7 @@ def _task_song_info(task: dict, render_image: bool) -> dict:
             f'{item.get("score", 0):,}',
             f'{item.get("rating", 0):.2f}',
             f'{item.get("nextPointScore", 0):.0f}',
-            str(item.get("status") or data.NO_DATA),
+            data.display_status(item),
         ]
         for level, item in samples
     ]
@@ -212,7 +212,7 @@ def _task_song_status(task: dict, render_image: bool) -> dict:
             f'{item.get("diff", 0):.1f}',
             f'{item.get("score", 0):,}',
             f'{item.get("ratingMix", 0):.2f}',
-            str(item.get("status") or data.NO_DATA),
+            data.display_status(item),
         ]
         for item in song_datas
     ]

@@ -26,6 +26,7 @@ data/temp/
 
 # 存档里对不上本地曲库的记录：由查询自动重建，且反映某个账号的存档内容
 data/library_gaps.json
+data/saves/
 
 # 专门喂给 AI 的 wiki 内容，同样因为版权不入库
 wiki/

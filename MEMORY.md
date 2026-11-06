@@ -222,6 +222,16 @@ Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不
 
 **3. 下架曲目排除出 b40**：数据源 `wiki/限时上架曲目列表.txt`，仍然只在运行时获取、不进仓库。
 
+**上游回推状态**：我们改的两处常数已于 2026-11-06 提交给 `None1145/RotaBot` 的 PR #1
+（标题「借助 wiki.rotaeno.cn，修复上游的 Rating 计算公式」；单补丁分支 `fix/for-upstream`），**未合并**。
+patch 统计 `12 insertions(+), 3 deletions(-)` 与本地 `git diff --stat rotaeno` 完全一致，两边没有分叉。
+
+**合并后要做什么（别误会成 revert）**：本仓库的 `rotaeno/` 是上游副本，合并后上游那份文件
+与我们逐字相同，**不存在要回退的差异，也不要 `git revert`**（那会把 `+3.6` / `/9995` 退回旧值，
+Rating 又会偏）。真正要做的只是两件记账的事：
+① `NOTICE.md` 第 2 节那几行从「我们的修改」改述为「已随上游版本生效」；
+② 将来整体同步 `rotaeno/` 覆盖目录时，**不用再记得重打这几处补丁**，也不会因此退回旧常数。
+
 **别再记错**：`login` **是有扫码的**（`tui.py:193-204` 用 `taptap_auth.TapTapLogin` 出二维码并回填三项），
 不要再说「qrcode 没搬」。上游顶层命令只有 `login` / `b40` / `song` / `rtr` 四组，**没有 update**；
 文件里出现的 `update` 都是内部函数 `update_user_datas()`（`upstream_bot.py:65`，写 `users.json`）。

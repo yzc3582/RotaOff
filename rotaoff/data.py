@@ -14,13 +14,14 @@ import io
 import json
 import os
 import re
+from datetime import datetime
 
 import requests
 
 import rotaeno
 
-from .paths import LIBRARY_GAPS_FILE
-from .store import RotaOffError, require_ready_profile
+from .paths import LIBRARY_GAPS_FILE, SAVES_DIR
+from .store import RotaOffError, active_profile_name, require_ready_profile
 
 NO_DATA = "【无数据】"          # 只兜底展示性字段；定数缺失的谱面不会进结果
 
@@ -36,6 +37,10 @@ CUSTOM_LABELS = {
     "charts": "谱面记录",
     "playtime": "游玩时长",
     "b40": "B40",
+    "cloud_updated_at": "云存档更新时间",
+    "fetched_at": "拉取时间",
+    "rating_diff": "Rating 变化",
+    "songs_diff": "成绩变化",
 }
 
 B40_COLUMNS = ("#", "曲目", "难度", "定数", "Rating", "分数", "状态")
@@ -221,6 +226,170 @@ def missing_from_library() -> dict:
     return {"songs": list(_GAPS["songs"]), "levels": list(_GAPS["levels"])}
 
 
+# ------------------------------------------------------------ 存档快照与变化
+# 上游历史库（`rotaeno/database/player_data.py`）只存玩家级字段，单谱分数**不入库**，
+# 所以「哪首歌的分数变了」只能自己留一份上一轮的成绩。这份快照只用于对比，
+# 不参与计算、也不当作读缓存：每条命令仍然实时拉取云存档。
+
+
+def snapshot_path(profile_name: str) -> str:
+    """按配置分开存。配置名可能带斜杠/空格，先滤掉路径分隔符再当文件名。"""
+    safe = re.sub(r"[^0-9A-Za-z_.-]+", "_", profile_name or "").strip(" .") or "default"
+    return os.path.join(SAVES_DIR, f"{safe}.json")
+
+
+def _chart_key(song: dict) -> str:
+    """谱面唯一键：曲目 id + 难度。两者都不随曲名改动。"""
+    return f'{song.get("id")}|{song.get("level")}'
+
+
+def _song_rating(song: dict) -> float:
+    return float(song.get("ratingMix", song.get("rating", 0)) or 0)
+
+
+def display_status(song: dict) -> str:
+    """状态列：`Flag` + 是否通关，例如 `NONE(C)` / `AP(-)`。
+
+    `Flag` 只说明有没有 FC/AP 标记，**不保证通关**：All Perfect+ 挑战、以及历史上
+    「AP 了但没 Clear」的 bug，都会留下 `FC`/`AP` 却没通关的记录。所以统一带后缀，
+    已通关 `(C)`、未通关 `(-)`，不要只给 NONE 加标记。
+    """
+    flag = str(song.get("status") or "").upper() or "NONE"
+    return f"{flag}({'C' if song.get('isCleared') else '-'})"
+
+
+def _charts_from(song_datas: list) -> dict:
+    """把一轮谱面压成 `{键: (分数, 单谱 Rating, 状态)}`，只在内存里比对用。"""
+    charts = {}
+    for song in song_datas or []:
+        charts[_chart_key(song)] = (
+            int(song.get("score") or 0),
+            round(_song_rating(song), 4),
+            display_status(song),
+        )
+    return charts
+
+
+def load_previous(profile_name: str) -> dict:
+    """上一轮的快照；文件不存在或损坏都当作「第一次记录」。"""
+    try:
+        with open(snapshot_path(profile_name), "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except (OSError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def store_previous(profile_name: str, snapshot: dict) -> bool:
+    """把本轮存成下一轮的对照（全量：`playerInfo` + 全部 `songDatas`）。
+
+    只保留最近一份、每次覆盖；写不进去（只读目录）不该影响本次结果。
+    """
+    payload = {
+        "fetchedAt": str(snapshot.get("fetchedAt") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        "playerInfo": snapshot.get("playerInfo") or {},
+        "songDatas": snapshot.get("songDatas") or [],
+    }
+    try:
+        os.makedirs(SAVES_DIR, exist_ok=True)
+        with open(snapshot_path(profile_name), "w", encoding="utf-8") as file:
+            json.dump(payload, file, ensure_ascii=False)
+    except OSError:
+        return False
+    return True
+
+
+def cloud_updated_at(snapshot: dict) -> str:
+    """云存档更新时间（服务器的 `updatedAt`）：游戏把存档同步到 TapTap 的时刻。
+
+    与本地时钟无关，也**不是**我们这次拉取的时间（那个是 `fetchedAt`，每次都变）。
+    判断「有没有新数据」只看这个。
+    """
+    raw = str((snapshot.get("playerInfo") or {}).get("updateAt") or "")
+    return raw.replace("T", " ")[:19]
+
+
+def diff_snapshots(snapshot: dict, previous: dict) -> dict:
+    """本轮与上一轮比：Rating 变化 + 单谱变化。`previous` 为空表示第一次记录。"""
+    info = snapshot.get("playerInfo") or {}
+    rating_now = float(info.get("rating", 0) or 0)
+    first_time = not previous
+    rating_before = (
+        None if first_time else float((previous.get("playerInfo") or {}).get("rating", 0) or 0)
+    )
+
+    before_charts = _charts_from(previous.get("songDatas") or [])
+    songs = []
+    for song in snapshot.get("songDatas") or []:
+        score = int(song.get("score") or 0)
+        rating = round(_song_rating(song), 4)
+        status = display_status(song)
+        before = before_charts.get(_chart_key(song))
+        if before is None:
+            if not score:                    # 以前没打、现在也没打：无关
+                continue
+            old_score, old_rating, old_status = 0, 0.0, "NONE(-)"
+        else:
+            old_score = int(before[0] or 0)
+            old_rating = float(before[1] or 0)
+            old_status = str(before[2] or "") or "NONE(-)"
+        if score == old_score and status == old_status:
+            continue
+        songs.append({
+            "title": str(song.get("title") or NO_DATA),
+            "level": str(song.get("level") or ""),
+            "score": (old_score, score),
+            "rating": (old_rating, rating),
+            "status": (old_status, status),
+        })
+
+    return {
+        "first_time": first_time,
+        "cloud_updated_at": cloud_updated_at(snapshot),
+        "previous_time": cloud_updated_at(previous),
+        "rating": (rating_before, rating_now),
+        "songs": songs,
+    }
+
+
+def _format_rating_diff(diff: dict) -> str:
+    """与 RotaBot 输出兼容：`14.7025+0.0000`，即使增量为 0 也照样打。"""
+    if not diff:
+        return NO_DATA
+    if diff.get("first_time"):
+        return "首次记录，下次起可对比"
+    before, now = diff.get("rating") or (None, None)
+    if before is None:
+        return f"{now:.4f}"
+    return f"{now:.4f}{now - before:+.4f}"
+
+
+def _format_songs_diff(diff: dict, limit: int = 0) -> str:
+    if not diff:
+        return NO_DATA
+    if diff.get("first_time"):
+        return "首次记录，下次起可对比"
+    songs = diff.get("songs") or []
+    if not songs:
+        return "无变化"
+    lines = []
+    for song in songs[:limit] if limit else songs:
+        old_score, new_score = song["score"]
+        old_rating, new_rating = song["rating"]
+        line = (
+            f'{song["title"]} ({song["level"]}): '
+            f'{old_score:,} → {new_score:,} ({new_score - old_score:+,})｜'
+            f'{old_rating:.4f} → {new_rating:.4f}'
+        )
+        old_status, new_status = (str(value or "NONE(-)") for value in song["status"])
+        if old_status != new_status:
+            line += f"｜{old_status} → {new_status}"
+        lines.append(line)
+    if limit and len(songs) > limit:
+        lines.append(f"…还有 {len(songs) - limit} 首")
+    return "\n".join(lines)
+
+
 def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dict:
     """一次请求拿到 playerInfo + songDatas。
 
@@ -239,9 +408,11 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
     )
     api = rotaeno.api.taptap_processor.TapTapAPI(region=region, user_profile=profile)
     buffer = io.StringIO()
+    name = profile_name or active_profile_name()
+    previous = load_previous(name)
     try:
         with contextlib.redirect_stdout(buffer):
-            return api.get_cloud_save(add_to_database=record_history)
+            snapshot = api.get_cloud_save(add_to_database=record_history)
     except ValueError as exc:                       # 含 requests 的 JSONDecodeError
         raise RotaOffError(
             f"服务器返回的不是 JSON（{type(exc).__name__}: {exc}）\n"
@@ -250,6 +421,12 @@ def fetch_snapshot(profile_name: str = None, record_history: bool = True) -> dic
     finally:
         fetch_snapshot.last_noise = buffer.getvalue().strip()
         _remember_upstream(buffer.getvalue())
+
+    # 顺序要紧：先跟上一份比，再覆盖写。反了就会永远对比到「无变化」。
+    snapshot["fetchedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    snapshot["diff"] = diff_snapshots(snapshot, previous)
+    store_previous(name, snapshot)
+    return snapshot
 
 
 def best40_from(snapshot: dict, limit: int = 40) -> list:
@@ -281,6 +458,7 @@ def metrics_from(snapshot: dict) -> dict:
     """把 playerInfo 里能单独拿出来用的数值整理成扁平字典。"""
     info = snapshot.get("playerInfo") or {}
     records = info.get("playRecords") or {}
+    diff = snapshot.get("diff") or {}
     played = len(snapshot.get("songDatas") or [])
     total = total_chart_count()
     percent = played / total * 100 if total else 0.0
@@ -295,6 +473,10 @@ def metrics_from(snapshot: dict) -> dict:
         "fc": str(records.get("TotalFc", 0)),
         "charts": str(played),
         "playtime": str(info.get("totalPlayTime") or NO_DATA),
+        "cloud_updated_at": diff.get("cloud_updated_at") or NO_DATA,
+        "fetched_at": str(snapshot.get("fetchedAt") or NO_DATA),
+        "rating_diff": _format_rating_diff(diff),
+        "songs_diff": _format_songs_diff(diff),
     }
 
 
@@ -320,6 +502,6 @@ def best40_rows(song_datas: list) -> list:
             f'{song.get("diff", 0):.1f}',
             f'{song.get("ratingMix", song.get("rating", 0)):.2f}',
             f'{song.get("score", 0):,}',
-            str(song.get("status") or NO_DATA),
+            display_status(song),
         ])
     return rows
