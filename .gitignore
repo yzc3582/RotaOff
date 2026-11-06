@@ -23,3 +23,5 @@ data/song_data.db.tmp
 data/player_data.db
 data/saves/
 data/temp/
+# 存档里对不上本地曲库的记录：由查询自动重建，且反映某个账号的存档内容
+data/library_gaps.json
