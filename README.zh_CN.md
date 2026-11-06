@@ -126,13 +126,22 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
 
 ## 曲库（Rating 算得准不准全看这里）
 
-`rotaeno/database/song_data.db` 是上游随仓库带的库，和上游项目本身一样**不再维护**，最新一首是 2.9.0 的曲子，共 307 首。比它新的曲目，每个谱面都没有定数（`num`），上游会按 0 分算进 Rating，于是总分被系统性压低。
+`rotaeno/database/song_data.db` 是上游随仓库带的库。上游对项目本身的说法是「不会经常更新，仅在有重大更新或开发者有时间时维护」，所以这份库长期停在 2.9.0，共 307 首。比它新的曲目，每个谱面都没有定数（`num`），上游代码会按 0 分算进 Rating，于是总分被系统性压低。
 
 给个具体量级：yzc3582（本分支的人类作者）在 2026 年 11 月实测时，游戏客户端是 2.99.0，存档 436 首，其中 129 首 / 538 个谱面没有定数，程序算出 Rating **14.5859**，游戏里显示 **14.6931**。这两个数字只是那一刻的快照——每出新曲差距都会变大，别当成固定值。
 
 本项目**不改 `rotaeno/` 里那份 .db**，也不读它：启动时由 `rotaoff/library.py` 在**运行期**把 `song_data` 实例换成用新数据重建的库。也就是说 `rotaeno/database/song_data.db` 现在是**死文件**，留着只为兼容上游代码里的 `songData(path)` 签名；删掉也没关系，只要 `Songlist.json` 或 `data/song_data.db` 还在。
 
 数据来源是 wiki 的 `Template:Songlist.json`（和 RotaBot 当初造 db 用的是同一份模板），包含曲目 id、曲名、曲师、时长、上架版本，以及全部难度的定数（含 IV-α，`ratingClass: 200`）。
+
+> **版权**：定数数据**摘自 [Rotaeno 中文维基](https://wiki.rotaeno.cn/)**，依 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) 使用。
+> 本项目仅作非商业用途；若你对外分发由这些数据派生的成果，请沿用同一许可并保留出处。
+> 抓取下来的 `Songlist.json` 与重建出的 `data/song_data.db` 都不进版本库。
+> 完整的第三方声明与我们对上游代码的修改清单见 [`NOTICE.md`](NOTICE.md)。
+
+> **与上游的关系**：`rotaeno/` 原本是 `None1145/RotaBot` 的代码，本项目**接管维护**。
+> 改动范围只有一处：当游戏规则随版本变化时（例如 v2.23.0 取消理论值额外 0.1 补正），
+> 在 `rotaeno/api/taptap_processor.py` 里跟进公式；数据来源、文件路径与 IO 一律在运行期注入，不改源码。
 
 ```bat
 library                       :: 现在用的是哪份库、多少首、多少谱面

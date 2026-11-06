@@ -126,13 +126,24 @@ When adding strings you only have to edit `zh-CN.json`; keys missing from `en-US
 
 ## The song library (this is what makes Rating correct)
 
-`rotaeno/database/song_data.db` ships with the upstream repo and, like the upstream project itself, is **not maintained**. Its newest song is release 2.9.0 and it holds 307 songs. Every chart on a newer song has no `num` (chart constant), so upstream rates it as 0 and the total is dragged down.
+`rotaeno/database/song_data.db` ships with the upstream repo. Upstream describes the project itself as “not updated often — only for major releases or when the developer has time”, so this library has stayed at release 2.9.0 and holds 307 songs. Charts newer than that have no `num` (chart constant); upstream code rates them as 0, so the total is dragged down.
 
 Concrete measurement, so the size of the problem is clear: when yzc3582 (the human author of this fork) ran it in November 2026, the game client was at 2.99.0 and the save held 436 songs. 129 songs / 538 charts had no constant, and the program reported Rating **14.5859** while the game showed **14.6931**. Both numbers are a snapshot of that moment — the gap grows with every release, so do not treat them as fixed values.
 
 This project **never modifies or reads that .db**. On startup `rotaoff/library.py` swaps the `song_data` instance at runtime for a database rebuilt from fresh data. In other words `rotaeno/database/song_data.db` is now a **dead file**: it stays only because upstream code calls `songData(path)`; deleting it is fine as long as `Songlist.json` or `data/song_data.db` exists.
 
 The data comes from the wiki's `Template:Songlist.json` — the very same template RotaBot originally built its db from. It carries song id, title, artist, duration, release version and the constant of every difficulty, IV-α included (`ratingClass: 200`).
+
+> **Licensing**: chart constants are **taken from the [Rotaeno Chinese Wiki](https://wiki.rotaeno.cn/)**, used under
+> [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/). This project is non-commercial only;
+> if you redistribute derived data, keep the same license and credit the wiki. Neither `Songlist.json`
+> nor the rebuilt `data/song_data.db` is committed. Full third-party notices and the list of upstream
+> changes live in [`NOTICE.md`](NOTICE.md).
+
+> **Relationship to upstream**: `rotaeno/` started as `None1145/RotaBot` code and is now **maintained here**.
+> The one allowed kind of change is following the game's rule updates (e.g. v2.23.0 dropped the extra 0.1
+> theoretical-value bonus) inside `rotaeno/api/taptap_processor.py`. Data sources, paths and IO are injected
+> at runtime instead of being patched into upstream source.
 
 ```bat
 library                       :: which library is in use, how many songs / charts

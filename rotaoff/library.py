@@ -12,6 +12,9 @@ Rating 完全依赖定数（`num`），缺一首歌的定数就等于这首算�
 这正是 RotaBot 原本构建 song_data.db 的同款结构（songs + packs，含 ratingReal 定数、
 ratingClass 200 = IV-α）。
 
+**出处**：摘自 Rotaeno 中文维基（CC BY-NC-SA 3.0）。定数数据不随本仓库分发，
+`Songlist.json` 与重建出的 `song_data.db` 都在 `.gitignore` 里。
+
 ## 三层取数，后面的兜前面
 
 1. `--auto` / 自动：纯 Python 解 Anubis 的工作量证明后直接拉 raw。
@@ -273,10 +276,7 @@ def build_database(payload: dict, target: str) -> dict:
         except Exception:            # noqa: BLE001
             pass
 
-    try:
-        os.replace(temporary, target)
-    except OSError as exc:
-        raise RotaOffError(f"替换 {target} 失败: {exc}") from exc
+    _replace_database(temporary, target)
 
     charts = sum(len(levels) for *_, levels in rows)
     return {
@@ -357,6 +357,49 @@ def activate(instance) -> list:
         alias.song_data = instance
         swapped.append("database.song_data")
     return swapped
+
+
+def _active_instance():
+    """当前挂在 rotaeno 上的曲库实例（可能还没创建）。"""
+    import sys
+
+    module = sys.modules.get("rotaeno.database.song_data")
+    return getattr(module, "song_data", None) if module is not None else None
+
+
+def dispose_active() -> None:
+    """释放当前曲库实例占用的文件句柄。
+
+    上游用 SQLAlchemy `create_engine` 打开库，engine 是**进程级连接池**：只要建好，
+    就抓着 `data/song_data.db` 的句柄（实测连查询都不需要），于是同进程里
+    `os.replace` 换文件会被 Windows 拒成 `WinError 5 拒绝访问`。
+    """
+    engine = getattr(_active_instance(), "engine", None)
+    if engine is None:
+        return
+    try:
+        engine.dispose()
+    except Exception:                       # noqa: BLE001 - 释放失败不该盖住真正原因
+        pass
+
+
+def _replace_database(temporary: str, target: str) -> None:
+    """用临时库替换正式库；替换前后都要管住文件句柄。"""
+    dispose_active()
+    last = None
+    for attempt in range(3):
+        try:
+            os.replace(temporary, target)
+            return
+        except OSError as exc:              # 杀毒软件/资源管理器偶尔也会临时占住
+            last = exc
+            time.sleep(0.2 * (attempt + 1))
+    raise RotaOffError(
+        f"替换 {target} 失败: {last}\n"
+        "已经尝试释放进程内的旧曲库并重试 3 次。还失败通常是别的程序占着这个 .db：\n"
+        "关掉 DB 浏览器类工具、把 data/ 加进杀毒软件排除项，或重启后再试。\n"
+        "当前会话已改用内存曲库，计算不受影响。"
+    )
 
 
 def open_database(path: str):

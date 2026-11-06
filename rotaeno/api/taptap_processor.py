@@ -30,14 +30,23 @@ def calculate_level(xp) -> float:
     return level
 
 def calculate_song_rating(song_score, rating_real, song_is_cleared) -> Tuple[float, float]:
+    """单谱面 Rating。补正系数按 v2.23.0 的规则（见 wiki「Rating」条目）：
+
+    出处：摘自 Rotaeno 中文维基（CC BY-NC-SA 3.0），
+    <https://wiki.rotaeno.cn/index.php?title=Rating>。这里只复述算法与常数。
+
+    - v2.23.0 取消了理论值的额外 0.1 补正，满分段由 `+3.7` 改为 `+3.6`；
+    - 1008000~1009999 段的分母由 10000 改为 9995，使该段在 1009999 恰好到 3.6，
+      与满分段连续（旧写法在段末只有 3.5999，再跳到 3.7）。
+    """
     next_rating_point = 0.001
 
     if song_score >= 1010000:
-        song_rating = rating_real + 3.7
+        song_rating = rating_real + 3.6
         next_point_score = 1010000
     elif 1008000 <= song_score < 1010000:
-        song_rating = rating_real + 3.4 + (song_score - 1008000) / 10000
-        next_point_score = (song_rating + next_rating_point - rating_real - 3.4) * 10000 + 1008000
+        song_rating = rating_real + 3.4 + (song_score - 1008000) / 9995
+        next_point_score = (song_rating + next_rating_point - rating_real - 3.4) * 9995 + 1008000
     elif 1004000 <= song_score < 1008000:
         song_rating = rating_real + 2.4 + (song_score - 1004000) / 4000
         next_point_score = (song_rating + next_rating_point - rating_real - 2.4) * 4000 + 1004000
