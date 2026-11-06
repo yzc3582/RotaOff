@@ -21,6 +21,7 @@ HELP_ZH = """
   profile set objectid <ID>        设置 objectID
   profile set session <TOKEN>      设置 sessionToken
   login [cn|global]           扫码登录 TapTap 并自动填好上面三项
+                              只支持 cn / global；上游的 private 服务器是半成品，本项目不支持
 
 查询（结果只在终端显示，除非开了 output 导出）
   b40                         Best40 表格
@@ -61,6 +62,7 @@ Account
   profile set objectid <ID>         set objectID
   profile set session <TOKEN>       set sessionToken
   login [cn|global]           scan the TapTap QR code and fill the three fields above
+                              cn / global only; upstream's "private" server is a stub and is not supported
 
 Queries (printed in the terminal unless output export is enabled)
   b40                         Best40 table

@@ -52,7 +52,7 @@ Three steps:
 | Command | What it does |
 | --- | --- |
 | `profile` / `profile use <name>` / `profile new <name>` | list, switch, create player profiles |
-| `profile set server cn\|global` | switch server |
+| `profile set server cn\|global` | switch server (cn / global only; upstream's `private` was never implemented) |
 | `login [cn\|global]` | scan-to-login for TapTap |
 | `b40` | Best40 table |
 | `song <title or alias>` | per-difficulty Rating of one song |

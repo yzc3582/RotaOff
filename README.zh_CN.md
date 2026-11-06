@@ -52,7 +52,7 @@ python -m venv .venv
 | 命令 | 作用 |
 | --- | --- |
 | `profile` / `profile use <名>` / `profile new <名>` | 查看、切换、新建玩家配置 |
-| `profile set server cn\|global` | 换服务器 |
+| `profile set server cn\|global` | 换服务器（只支持国服/国际服；上游的 `private` 是半成品，本项目不支持） |
 | `login [cn\|global]` | 扫码登录 TapTap |
 | `b40` | Best40 表格 |
 | `song <曲名或别名>` | 单曲各难度 Rating |

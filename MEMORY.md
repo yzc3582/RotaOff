@@ -201,3 +201,27 @@ Rating 与游戏内是否一致；`song <新曲>` 在缺定数时给提示而不
 **4. 文档同步**：新增 `library` 系列命令后，`HELP_ZH`/`HELP_EN`、`README(.zh_CN)`、
 `docs/py-all-in-one.en_US.md` 是否都覆盖了 `library` / `library update` / `library source`；
 以及 `profile set` 现在认短名和任意大小写这件事，也应写进英文汇总。
+
+## 暂停后的待办队列（按用户定的顺序）
+
+**0. private 服务器：已定案「不支持」**（2026-11-06）。已写进 `tui.py` 帮助（中/英）与两版 README 的
+`profile set server` 行。事实依据：`rotaeno/api/taptap.py:7-38` 的 `ServerRegion` 只有 `CN`/`GLOBAL`，
+`else: raise ValueError("Invalid region")`——上游 Discord 版的「私有服务器」选项本身就是半成品，
+我们没有支持它，不是砍功能。
+
+**1. `/r update` 等价物（QQ 端 RotaBot 有，Discord 上游没有）**
+- QQ 端那个 `/r update` 拉的是**云存档**，不是曲库；QQ 端会缓存用户数据，所以才需要手动刷新。
+- 本项目每条命令都实时拉云存档，缺的不是「拉数据」，而是**显式刷新/缓存语义 + 让用户看见新鲜度**。
+- 同一批要做：**结果里显示 `TIME`（云存档同步时间）**。数据已经存在：
+  `taptap_processor.py:272` 产出 `updateAt = user_data["updatedAt"]`，全仓库无人消费
+  （`findstr updateAt` 只有这一处），所以这一步基本是展示层改动。
+- 排在 Anubis 之前。
+
+**2. Anubis PoW 拆成独立模块**：目前内嵌在 `library.py`，下架曲目功能要复用同一套
+「会话 + 挑战流程」，所以先拆再复用。
+
+**3. 下架曲目排除出 b40**：数据源 `wiki/限时上架曲目列表.txt`，仍然只在运行时获取、不进仓库。
+
+**别再记错**：`login` **是有扫码的**（`tui.py:193-204` 用 `taptap_auth.TapTapLogin` 出二维码并回填三项），
+不要再说「qrcode 没搬」。上游顶层命令只有 `login` / `b40` / `song` / `rtr` 四组，**没有 update**；
+文件里出现的 `update` 都是内部函数 `update_user_datas()`（`upstream_bot.py:65`，写 `users.json`）。
