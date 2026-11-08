@@ -201,6 +201,41 @@ def redirect_player_history(root: str | None = None) -> dict:
     return {"path": str(getattr(instance, "engine").url) if instance.engine else "", "modules": replaced}
 
 
+def redirect_retired_songs(root: str | None = None) -> dict:
+    """把上游 `retired_songs` 指到 `data/retired_songs.db`（可写、可刷新）。
+
+    首次没有这份 db 时，从仓库自带的 `rotaeno/database/retired_songs.db`
+    复制一份作为种子；之后由 `rotaoff.retired.sync()` 现场更新。
+    """
+    import shutil
+
+    import rotaeno.database.retired_songs as main_module
+
+    from .paths import DATA_DIR
+
+    target = os.path.join(DATA_DIR, "retired_songs.db")
+    seed = os.path.join(os.path.dirname(os.path.abspath(main_module.__file__)), "retired_songs.db")
+    if (not os.path.isfile(target) or os.path.getsize(target) == 0) and os.path.isfile(seed):
+        try:
+            os.makedirs(DATA_DIR, exist_ok=True)
+            shutil.copyfile(seed, target)
+        except OSError:
+            pass
+
+    try:
+        instance = main_module.RetiredSongs(target)
+    except Exception:                     # noqa: BLE001 - data/ 不可写时保留上游种子
+        return {"path": "", "modules": []}
+
+    replaced = []
+    for name in ("rotaeno.database.retired_songs", "database.retired_songs"):
+        module = sys.modules.get(name)
+        if module is not None:
+            setattr(module, "retired_songs", instance)
+            replaced.append(name)
+    return {"path": target, "modules": replaced}
+
+
 def install() -> None:
     """给上游 `BaseAPI` 换上修好的 URL 拼接与错误提示（幂等）。"""
     global _installed
@@ -218,5 +253,9 @@ def install() -> None:
     try:
         redirect_player_history()
     except Exception:                 # noqa: BLE001
+        pass
+    try:
+        redirect_retired_songs()
+    except Exception:                 # noqa: BLE001 - 下架曲 db 不该拦住启动
         pass
     _installed = True

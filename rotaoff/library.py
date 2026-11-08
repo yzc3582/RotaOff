@@ -418,6 +418,20 @@ def update(local: bool = False, path: str | None = None) -> dict:
         stats = _stats_of(instance)
         stats["path"] = "(内存，未落盘)"
 
+    try:
+        from . import retired
+
+        if local:
+            retired_stats = retired.sync(text=retired.read_local())
+        else:
+            retired_stats = retired.sync()
+        note = f"下架曲目：{retired_stats['count']} 条（{retired_stats['source']}）"
+        if retired_stats.get("warning"):
+            note += f"；{retired_stats['warning']}"
+        notes.append(note)
+    except Exception as exc:             # noqa: BLE001 - 刷新下架曲不该毁掉曲库更新
+        notes.append(f"下架曲目列表刷新失败：{exc}")
+
     stats["notes"] = notes
     return stats
 

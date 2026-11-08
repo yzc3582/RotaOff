@@ -1,34 +1,40 @@
-"""限时上架曲目列表的清洗：把 wiki 表格文本变成结构化记录。
+"""限时上架曲目列表：现场获取 → 清洗 → 存储，并供上游 Best40 使用。
 
-数据源是 wiki 的「已下架曲目」表（`wiki/限时上架曲目列表.txt`，运行时抓取，
-`wiki/` 不入库）。这里只做**解析与曲名匹配**，不碰 Rating / B40；
-真正的「排除出 B40」等下一阶段再接。
+数据来源是 wiki 的「限时上架曲目列表」页（`wiki/` 不入库）：
 
-表格里每条记录长这样（5 列，曲名在第 2 列，时间在第 5 列）：
+    https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw
 
-    |-
-    | [[file:Songs xxx.png|100px]]
+页面里有两张表：「已下架曲目」和「在售的限时上架曲目」。每条记录 5 列，
+曲名在第 2 列、时间在第 5 列，曲绘文件名里带曲目 ID：
+
+    | [[file:Songs rokutyounen.png|100px]]
     | -{[[六兆年と一夜物語]]}-
-    | [[向未来之声]]
-    | {{link|曲师|kemu}}
     | 2025/05/30 - 2026/06/30<ref name="delayed-date-1">…</ref>
 
-只解析 `== 已下架曲目 ==` 这一节；「在售的限时上架曲目」即使写了未来下架日期也不能排除。
+`sync()` 把两张表都写进 `data/retired_songs.db`（与上游 `RetiredSongs` 同 schema），
+由 `rotaoff.patch.redirect_retired_songs()` 注入上游实例；`get_best40` 再按
+`end_date <= 今天` 把已下架曲目排除。上游仓库自带的
+`rotaeno/database/retired_songs.db` 只作为首次启动的种子。
 """
 
 import html
 import os
 import re
+import sqlite3
 from datetime import date
+
+from .store import RotaOffError
+
+PAGE = "限时上架曲目列表"
 
 _REF_RE = re.compile(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>", re.S)
 _LINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_IMAGE_RE = re.compile(r"file:Songs\s+([^.|]+)\.png", re.I)
 _TIME_RE = re.compile(
     r"(\d{4})/(\d{1,2})/(\d{1,2})\s*[-–—]\s*(\d{4})/(\d{1,2})/(\d{1,2})"
 )
-_SECTION_RE = re.compile(r"^==\s*已下架曲目\s*==\s*$", re.M)
-_NEXT_SECTION_RE = re.compile(r"^==[^=].*==\s*$", re.M)
+_SECTION_END_RE = re.compile(r"^==[^=].*==\s*$", re.M)
 _ROW_SPLIT_RE = re.compile(r"^\s*\|-\s*$", re.M)
 
 
@@ -42,18 +48,19 @@ def clean_title(raw: str) -> str:
     return " ".join(text.split()).strip()
 
 
-def parse(text: str) -> list:
-    """解析「已下架曲目」表；返回 [{title, start, end}]，日期是 ISO 字符串。"""
-    match = _SECTION_RE.search(text or "")
+def _section_body(text: str, heading: str) -> str:
+    pattern = re.compile(r"^==\s*" + re.escape(heading) + r"\s*==\s*$", re.M)
+    match = pattern.search(text or "")
     if not match:
-        return []
+        return ""
     rest = text[match.end():]
-    next_match = _NEXT_SECTION_RE.search(rest)
-    if next_match:
-        rest = rest[:next_match.start()]
+    end = _SECTION_END_RE.search(rest)
+    return rest[:end.start()] if end else rest
 
+
+def _records_from_body(body: str, with_id: bool) -> list:
     records = []
-    for block in _ROW_SPLIT_RE.split(rest)[1:]:
+    for block in _ROW_SPLIT_RE.split(body)[1:]:
         cells = [
             line[1:].strip()
             for line in block.splitlines()
@@ -66,28 +73,124 @@ def parse(text: str) -> list:
         if not title or not time_match:
             continue
         year1, month1, day1, year2, month2, day2 = (int(part) for part in time_match.groups())
-        records.append({
+        record = {
             "title": title,
             "start": date(year1, month1, day1).isoformat(),
             "end": date(year2, month2, day2).isoformat(),
-        })
+        }
+        if with_id:
+            image = _IMAGE_RE.search(cells[0])
+            record["id"] = image.group(1).strip() if image else ""
+        records.append(record)
     return records
 
 
-def load(path: str | None = None) -> list:
-    """读本地那份 wiki 文本；默认找仓库根目录的 `wiki/限时上架曲目列表.txt`。"""
-    if path is None:
-        from .paths import BASE_DIR
+def parse(text: str) -> list:
+    """只解析「已下架曲目」表；返回 [{title, start, end}]。"""
+    return _records_from_body(_section_body(text, "已下架曲目"), with_id=False)
 
-        path = os.path.join(BASE_DIR, "wiki", "限时上架曲目列表.txt")
-    with open(path, encoding="utf-8") as handle:
-        return parse(handle.read())
+
+def parse_all(text: str) -> list:
+    """解析「已下架」+「在售」两张表；返回 [{id, title, start, end}]。"""
+    records = _records_from_body(_section_body(text, "已下架曲目"), with_id=True)
+    records += _records_from_body(_section_body(text, "在售的限时上架曲目"), with_id=True)
+    return records
+
+
+def local_path() -> str:
+    from .paths import BASE_DIR
+
+    return os.path.join(BASE_DIR, "wiki", "限时上架曲目列表.txt")
+
+
+def read_local(path: str | None = None) -> str:
+    with open(path or local_path(), encoding="utf-8") as handle:
+        return handle.read()
+
+
+def load(path: str | None = None) -> list:
+    """读本地那份 wiki 文本并解析「已下架曲目」表。"""
+    return parse(read_local(path))
 
 
 def due(records: list, today: date | None = None) -> list:
     """筛出「下架日期 <= 今天」的记录（含下架当天）。"""
     today = today or date.today()
     return [record for record in records if date.fromisoformat(record["end"]) <= today]
+
+
+def database_path() -> str:
+    from .paths import DATA_DIR
+
+    return os.path.join(DATA_DIR, "retired_songs.db")
+
+
+def _write_db(records: list, path: str) -> int:
+    rows = [
+        (record["id"], record["title"], record["start"], record["end"])
+        for record in records
+        if record.get("id")
+    ]
+    if not rows:
+        raise RotaOffError("限时上架曲目列表里没有任何曲目 ID，页面结构可能变了。")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS retired_songs ("
+            "id VARCHAR PRIMARY KEY, title VARCHAR NOT NULL, "
+            "start_date VARCHAR NOT NULL, end_date VARCHAR NOT NULL)"
+        )
+        connection.execute("DELETE FROM retired_songs")
+        connection.executemany(
+            "INSERT INTO retired_songs (id, title, start_date, end_date) VALUES (?, ?, ?, ?)",
+            rows,
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return len(rows)
+
+
+def sync(text: str | None = None, path: str | None = None, timeout: int = 30) -> dict:
+    """现场抓 wiki → 清洗两张表 → 覆盖写 `data/retired_songs.db`。
+
+    远程失败时回退本地 `wiki/限时上架曲目列表.txt`；两边都失败才抛错。
+    """
+    warning = ""
+    source = "传入文本"
+    if text is None:
+        from . import anubis
+
+        try:
+            text = anubis.fetch_text(
+                "/index.php", {"title": PAGE, "action": "raw"}, timeout=timeout
+            )
+            source = "wiki 在线抓取"
+        except Exception as exc:             # noqa: BLE001 - 在线失败要能回退
+            warning = f"在线抓取失败，改用本地文本: {exc}"
+
+    if text is None:
+        try:
+            text = read_local()
+            source = f"本地 {os.path.basename(local_path())}"
+        except OSError as exc:
+            raise RotaOffError(f"没有可用的限时上架曲目列表: {exc}") from exc
+
+    records = parse_all(text)
+    if not records:
+        raise RotaOffError("限时上架曲目列表里没有解析到任何记录，页面结构可能变了。")
+
+    target = path or database_path()
+    written = _write_db(records, target)
+    missing = [record["title"] for record in records if not record.get("id")]
+    return {
+        "count": written,
+        "path": target,
+        "source": source,
+        "warning": warning,
+        "missing": missing,
+    }
 
 
 def _normalize(title: str) -> str:
@@ -115,9 +218,19 @@ def match(records: list, songs) -> tuple:
 def status(today: date | None = None) -> tuple:
     """返回 `(已下架曲目 ID 集合, 未匹配曲名, 错误信息)`。
 
-    列表读不到或曲库不可用时，宁可返回空集合 + 错误信息让上层警告，
-    也不要假装「排除成功」。
+    优先读注入后的上游 `retired_songs` 实例（`data/retired_songs.db`）；
+    db 里没有已下架曲目时，回退本地 wiki 文本 + 曲名匹配。
     """
+    try:
+        import rotaeno
+
+        instance = rotaeno.database.retired_songs.retired_songs
+        ids = set(instance.get_retired_ids(today))
+        if ids:
+            return ids, [], ""
+    except Exception:                    # noqa: BLE001 - db 未注入时走回退
+        pass
+
     try:
         records = due(load(), today)
     except OSError as exc:

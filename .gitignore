@@ -21,6 +21,7 @@ rotaeno/saves/
 data/song_data.db
 data/song_data.db.tmp
 data/player_data.db
+data/retired_songs.db
 data/saves/
 data/temp/
 
