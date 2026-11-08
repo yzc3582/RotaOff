@@ -231,6 +231,21 @@
   用户判断当时**可能没网** → **压测未完成、不算验证通过**；下次先确认网络再续跑。
   `data/tasks.json` 已恢复原 3 任务。
 
+## 下架曲数据清洗（2026-11-08）
+
+- `wiki/限时上架曲目列表.txt` **没有对应的 JSON**，只能从 wiki 表格文本解析。
+- 新模块 `rotaoff/retired.py`：`parse()` / `clean_title()` / `load()` / `due()` / `match()`。
+  只解析 `== 已下架曲目 ==` 那一节；「在售的限时上架曲目」即使写了未来下架日期也不排除。
+- 清洗要点：去 `-{…}-`、`[[…]]`、`<ref>…</ref>` / `<ref/>`、HTML 标签与实体；
+  时间格式 `YYYY/MM/DD - YYYY/MM/DD`；`end <= 今天` 算已下架（含当天）；
+  曲名匹配前统一 `casefold()` + 去空白。
+- 实测（2026-11-08，数据源为本地 txt + `data/song_data.db`）：
+  5 条记录全部解析正确；截至当天 5 首全部到期；与曲库 **5/5 匹配**
+  （`king` / `lagtrain` / `monitoring` / `rokutyounen` / `wildcard`），无未匹配。
+  离线测试：`.scratch/test_retired.py`。
+- **尚未接入 B40**。下一步把 `due(records)` 的曲目 ID 交给 `rotaoff/data.py` 在 B40 取值处过滤，
+  不改 `rotaeno/api/taptap_processor.py`。
+
 ## 验证过的命令
 
 ```bat
