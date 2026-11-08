@@ -438,6 +438,7 @@ def cmd_library(args) -> None:
 
     if not args or args[0] in ("show", "list", "status"):
         status = library.status()
+        retired_info = status.get("retired") or {}
         ui.table(
             ["项", "值"],
             [
@@ -448,8 +449,15 @@ def cmd_library(args) -> None:
                 ["最新版本", status.get("latest_release") or "-"],
                 ["曲库文件", _display_path(status.get("path", "")) or "(未落盘)"],
                 ["Songlist 源", _display_path(status.get("source_json", "")) or "(无)"],
+                ["下架曲来源", "wiki「限时上架曲目列表」"],
+                ["下架曲文本", retired_info.get("text") or "(无)"],
+                ["下架曲数据库", retired_info.get("db") or "(无)"],
+                ["下架曲记录", f"{retired_info.get('count', '-')} 条 / "
+                              f"已下架 {retired_info.get('due', '-')} 首"],
             ],
         )
+        if retired_info.get("url"):
+            ui.info(f"下架曲列表手动下载: {retired_info['url']}")
         if status.get("warning"):
             ui.warn(status["warning"])
         if not status.get("built"):

@@ -169,6 +169,12 @@ library source D:\some\Songlist.json  :: 指定本地文件位置
 
 这份库**不进版本库**（见 `.gitignore`）：它是派生数据，内容版权归 wiki 的贡献者。要重建一条命令就够。
 
+`library` 还会列出下架曲列表的维护信息：wiki 来源、文本文件 `wiki/限时上架曲目列表.txt`、数据库 `data/retired_songs.db`，以及「11 条 / 已下架 5 首」。完整的手动下载链接会打印在表格下方：
+
+<https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw>
+
+`library update` 会顺带刷新这份 db；`--local` 用本地文本，不联网。
+
 ## 已下架曲目
 
 限时上架曲目下架后，其全部难度谱面不再参与 Rating / Completion 计算。`b40` 会自动排除它们：

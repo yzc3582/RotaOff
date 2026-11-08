@@ -262,6 +262,8 @@
   `retired.status()` 优先读注入实例，db 无数据才回退本地 wiki 文本 + 曲名匹配。
   双数据源已统一；`.gitignore` 加了 `data/retired_songs.db`。
   离线测试：`.scratch/test_retired_sync.py`。
+  `library` 现在会显示下架曲来源、文本、db、条数/已下架数，并在表格下方打印完整手动下载链接
+  `https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw`。
 
 ## 验证过的命令
 

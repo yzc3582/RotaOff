@@ -125,6 +125,48 @@ def database_path() -> str:
     return os.path.join(DATA_DIR, "retired_songs.db")
 
 
+def _relative(path: str) -> str:
+    from .paths import BASE_DIR
+
+    try:
+        relative = os.path.relpath(path, BASE_DIR)
+    except ValueError:
+        return path
+    return path if relative.startswith("..") else relative.replace(os.sep, "/")
+
+
+def db_count() -> int:
+    path = database_path()
+    if not os.path.isfile(path):
+        return 0
+    connection = sqlite3.connect(path)
+    try:
+        return int(connection.execute("SELECT COUNT(*) FROM retired_songs").fetchone()[0])
+    except sqlite3.Error:
+        return 0
+    finally:
+        connection.close()
+
+
+def summary(today: date | None = None) -> dict:
+    """下架曲列表的来源、路径与条数（不联网，供 `library` 展示）。"""
+    text = local_path()
+    count = db_count()
+    if count == 0:
+        try:
+            count = len(parse_all(read_local(text)))
+        except OSError:
+            count = 0
+    ids, _, _ = status(today)
+    return {
+        "url": f"https://wiki.rotaeno.cn/index.php?title={PAGE}&action=raw",
+        "text": _relative(text),
+        "db": _relative(database_path()),
+        "count": count,
+        "due": len(ids),
+    }
+
+
 def _write_db(records: list, path: str) -> int:
     rows = [
         (record["id"], record["title"], record["start"], record["end"])
@@ -187,6 +229,8 @@ def sync(text: str | None = None, path: str | None = None, timeout: int = 30) ->
     return {
         "count": written,
         "path": target,
+        "text": _relative(local_path()),
+        "db": _relative(target),
         "source": source,
         "warning": warning,
         "missing": missing,

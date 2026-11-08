@@ -32,7 +32,7 @@ import os
 import sqlite3
 import time
 
-from . import anubis, ui
+from . import anubis, retired, ui
 from .store import RotaOffError
 
 WIKI_PAGE = "Template:Songlist.json"
@@ -357,6 +357,10 @@ def status() -> dict:
         "path": "",
         "source_json": source_path(),
     }
+    try:
+        info["retired"] = retired.summary()
+    except Exception:                    # noqa: BLE001 - 下架曲信息不该拦住 library
+        info["retired"] = {}
     if instance is None:
         return info
 
@@ -429,6 +433,7 @@ def update(local: bool = False, path: str | None = None) -> dict:
         if retired_stats.get("warning"):
             note += f"；{retired_stats['warning']}"
         notes.append(note)
+        notes.append(f"下架曲文本: {retired_stats['text']}；数据库: {retired_stats['db']}")
     except Exception as exc:             # noqa: BLE001 - 刷新下架曲不该毁掉曲库更新
         notes.append(f"下架曲目列表刷新失败：{exc}")
 

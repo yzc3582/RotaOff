@@ -171,6 +171,12 @@ The rebuilt library lands in `data/song_data.db` (same schema as upstream: `song
 
 That file is **not committed** (see `.gitignore`): it is derived data, and its content belongs to the wiki contributors. Rebuilding it takes one command.
 
+`library` also lists the retired-song source (`wiki/限时上架曲目列表.txt`), the db (`data/retired_songs.db`), the record count and the due count, and prints the manual download link:
+
+<https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw>
+
+`library update` refreshes that db as well; `--local` uses the local text and stays offline.
+
 ## Retired songs
 
 When a limited-time song is retired, all of its charts stop counting toward Rating / Completion. `b40` excludes them automatically:
