@@ -254,6 +254,14 @@
   结果 `_ranked()` 只返回 40 条、下架曲全部消失；`b40` 任务与 `custom rating,b40` 均通过。
   把列表读不到时，`exclude_retired()` 不排除并返回 error，`_ranked()` 产出警告
   （`读不到...`），验证了「不静默假装排除」。测试：`.scratch/test_b40_retired.py`。
+- **自动维护（2026-11-08 晚）**：RotaOff 自己维护上游那份 db：
+  `retired.sync()` 现场抓 wiki「限时上架曲目列表」→ `parse_all()` 清洗两张表 →
+  覆盖写 `data/retired_songs.db`；`patch.redirect_retired_songs()` 首次从
+  `rotaeno/database/retired_songs.db` 复制种子，再把上游实例指到 data 这份。
+  `library update` 顺带刷新（`--local` 用本地文本，不联网）。
+  `retired.status()` 优先读注入实例，db 无数据才回退本地 wiki 文本 + 曲名匹配。
+  双数据源已统一；`.gitignore` 加了 `data/retired_songs.db`。
+  离线测试：`.scratch/test_retired_sync.py`。
 
 ## 验证过的命令
 

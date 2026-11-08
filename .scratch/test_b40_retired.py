@@ -70,6 +70,9 @@ original_fetch = data.fetch_snapshot
 original_profile = tasks._profile_name
 original_locale = tasks.profile_locale
 original_load = retired.load
+import rotaeno.database.retired_songs as retired_module
+
+original_get = retired_module.retired_songs.get_retired_ids
 try:
     data.fetch_snapshot = lambda *args, **kwargs: snapshot
     tasks._profile_name = lambda task: "default"
@@ -89,6 +92,9 @@ try:
     assert len(custom["rows"]) == 40 and custom["warnings"] == []
     print("task_ok=b40+custom")
 
+    retired_module.retired_songs.get_retired_ids = (
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("db unavailable"))
+    )
     retired.load = lambda *args, **kwargs: (_ for _ in ()).throw(OSError("no list"))
     filtered, info = data.exclude_retired(song_datas)
     assert info["error"], info
@@ -101,5 +107,6 @@ finally:
     tasks._profile_name = original_profile
     tasks.profile_locale = original_locale
     retired.load = original_load
+    retired_module.retired_songs.get_retired_ids = original_get
 
 print("OK")

@@ -175,11 +175,12 @@ That file is **not committed** (see `.gitignore`): it is derived data, and its c
 
 When a limited-time song is retired, all of its charts stop counting toward Rating / Completion. `b40` excludes them automatically:
 
-- Source is the wiki “已下架曲目” (retired songs) table (`wiki/限时上架曲目列表.txt`; fetched at runtime, never committed)
+- Source is the wiki “限时上架曲目列表”; `library update` fetches, cleans and writes it to `data/retired_songs.db` (`--local` uses the local text, no network)
+- On first run the bundled `rotaeno/database/retired_songs.db` is copied as a seed; RotaOff maintains it from then on
 - Only songs whose retirement date is **<= today** are excluded; the “on sale” table keeps playing even if it lists a future date
 - Only Rating / B40 ranking is affected; `song` / `status` / `rtr` still show those charts
+- The `b40` table and image both read the same `data/retired_songs.db`, so the image no longer includes retired songs
 - If the list cannot be read or a title does not match the library, RotaOff warns instead of silently pretending the exclusion worked
-- The `b40` image still comes from upstream `get_best40` and may include retired songs for now
 
 ## Save snapshots and changes
 

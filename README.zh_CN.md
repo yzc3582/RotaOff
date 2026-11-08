@@ -173,11 +173,12 @@ library source D:\some\Songlist.json  :: 指定本地文件位置
 
 限时上架曲目下架后，其全部难度谱面不再参与 Rating / Completion 计算。`b40` 会自动排除它们：
 
-- 数据源是 wiki 的「已下架曲目」表（`wiki/限时上架曲目列表.txt`，运行时获取，不入库）
+- 数据源是 wiki 的「限时上架曲目列表」；`library update` 会现场抓取、清洗并写入 `data/retired_songs.db`（`--local` 用本地文本，不联网）
+- 首次启动会从仓库自带的 `rotaeno/database/retired_songs.db` 复制一份种子，之后由 RotaOff 自动维护
 - 只排除下架日期 **<= 今天** 的曲目；「在售的限时上架曲目」即使写了未来日期也不动
 - 只影响 Rating / B40 排序；`song` / `status` / `rtr` 仍然能看到这些谱面
+- `b40` 表格和图片都读同一份 `data/retired_songs.db`，图片不会再包含已下架曲目
 - 列表读不到、或曲名在曲库里匹配不上时，会明确警告，不会静默假装排除
-- `b40` 图片仍由上游 `get_best40` 生成，暂时可能包含已下架曲目
 
 ## 存档快照与变化
 
