@@ -1,0 +1,58 @@
+rotaoff> db update
+正在从 wiki.rotaeno.cn 拉取 Songlist.json（需要先过 Anubis 反爬验证）…
+✔ 曲库已更新: 434 首 / 1770 谱面 / IV-α 34 首 / 版本 2.99.0
+来源：wiki 在线抓取（2026-11-06 16:46:07）
+替换 D:\yzc3582\files_new\Projects\RotaOff\data\song_data.db 失败: [WinError 5] 拒绝访问。: 'D:\\yzc3582\\files_new\\Projects\\RotaOff\\data\\song_data.db.tmp' -> 'D:\\yzc3582\\files_new\\Projects\\RotaOff\\data\\song_data.db'
+已改用内存曲库，本次会话照常可用，但下次启动要重来。
+写入: (内存，未落盘)
+已在当前进程生效；下次启动会自动读这份库。
+rotaoff> b40
+
+▶ Best40  (0.43s)
+  Tvlr  |  Rating 14.7035  |  Lv.218.70
+  APP 2  AP 46  FC 102  |  完成度 1770/1770 (100.0%)  |  时长 514 hours 25 minutes 42 seconds
+┌────┬────────────────────────────────────────────────┬──────┬──────┬────────┬───────────┬──────┐
+│  # │ 曲目                                           │ 难度 │ 定数 │ Rating │      分数 │ 状态 │
+├────┼────────────────────────────────────────────────┼──────┼──────┼────────┼───────────┼──────┤
+│  1 │ Rocket Lanterns                                │  IV  │ 12.5 │  16.08 │ 1,009,785 │  AP  │
+│  2 │ Sakura rain                                    │  IV  │ 12.3 │  15.88 │ 1,009,824 │  AP  │
+│  3 │ Fractured Skies                                │ III  │ 11.5 │  15.08 │ 1,009,757 │  AP  │
+│  4 │ Chrysanthemum                                  │  IV  │ 12.1 │  14.99 │ 1,005,979 │  FC  │
+│  5 │ A Clock                                        │  IV  │ 11.4 │  14.99 │ 1,009,908 │  AP  │
+│  6 │ Infinity Heaven                                │  IV  │ 11.2 │  14.79 │ 1,009,887 │  AP  │
+│  7 │ Secret Illumination                            │ III  │ 11.1 │  14.69 │ 1,009,894 │  AP  │
+│  8 │ K.Moe (VIP)                                    │ III  │ 11.0 │  14.57 │ 1,009,711 │  AP  │
+│  9 │ Aqua Stars                                     │ III  │ 11.7 │  14.57 │ 1,005,882 │ NONE │
+│ 10 │ Journey with You                               │  IV  │ 11.6 │  14.53 │ 1,006,115 │ NONE │
+│ 11 │ Ice Festival                                   │  IV  │ 11.4 │  14.52 │ 1,006,876 │  FC  │
+│ 12 │ The Promised Land                              │  IV  │ 11.6 │  14.50 │ 1,006,008 │ NONE │
+│ 13 │ Anthem                                         │ III  │ 10.9 │  14.48 │ 1,009,774 │  AP  │
+│ 14 │ Awaken In Ruins                                │  IV  │ 12.3 │  14.45 │ 1,001,523 │  FC  │
+│ 15 │ fallin' fallin' (prod. INFX, Ella Jung, Limpi… │  IV  │ 12.2 │  14.44 │ 1,002,365 │ NONE │
+│ 16 │ Sword of Convallaria                           │  IV  │ 11.0 │  14.42 │ 1,008,205 │  FC  │
+│ 17 │ The Formula                                    │  IV  │ 12.4 │  14.40 │   999,958 │ NONE │
+│ 18 │ Reverie                                        │  IV  │ 11.7 │  14.38 │ 1,005,135 │  FC  │
+│ 19 │ 爱上想象的你                                   │  IV  │ 11.8 │  14.38 │ 1,004,727 │ NONE │
+│ 20 │ Snow Magic                                     │  IV  │ 11.2 │  14.36 │ 1,007,049 │ NONE │
+│ 21 │ 恶修女——永火熔铸                               │  IV  │ 12.0 │  14.31 │ 1,003,067 │ NONE │
+│ 22 │ huggy wuggy                                    │ III  │ 10.6 │  14.30 │ 1,010,000 │ APP  │
+│ 23 │ After Rain                                     │  IV  │ 10.7 │  14.29 │ 1,009,919 │  AP  │
+│ 24 │ Love Splash                                    │  IV  │ 12.3 │  14.27 │   999,426 │ NONE │
+│ 25 │ Extraordinary                                  │  IV  │ 12.0 │  14.20 │ 1,002,033 │ NONE │
+│ 26 │ Aqua Theme                                     │  IV  │ 10.6 │  14.17 │ 1,009,659 │  AP  │
+│ 27 │ LostPuppet                                     │  IV  │ 10.6 │  14.11 │ 1,009,142 │ NONE │
+│ 28 │ Fall in Me                                     │  IV  │ 12.3 │  14.09 │   995,702 │ NONE │
+│ 29 │ 今天不是明天                                   │  IV  │ 10.5 │  14.05 │ 1,009,541 │  AP  │
+│ 30 │ corps-sans-organes                             │ III  │ 12.2 │  14.05 │   996,911 │ NONE │
+│ 31 │ Last Paradise                                  │  IV  │ 11.2 │  13.99 │ 1,005,563 │  FC  │
+│ 32 │ ストレイソウル・アラウンド                     │  IV  │ 12.2 │  13.97 │   995,301 │ NONE │
+│ 33 │ Lullaby For an Android                         │  IV  │ 11.6 │  13.95 │ 1,003,458 │ NONE │
+│ 34 │ Secret Illumination (seatrus's "The AURA" Rem… │ III  │ 11.5 │  13.92 │ 1,004,077 │ NONE │
+│ 35 │ Orb Theme                                      │  IV  │ 12.3 │  13.90 │   992,026 │ NONE │
+│ 36 │ GALACTIC WARZONE                               │ III  │ 11.9 │  13.90 │   999,979 │ NONE │
+│ 37 │ 無彩色のディストピア                           │  IV  │ 11.5 │  13.87 │ 1,003,748 │ NONE │
+│ 38 │ Chrysanthemum                                  │ III  │ 10.3 │  13.81 │ 1,009,114 │  AP  │
+│ 39 │ NO ONE YES MAN                                 │  IV  │ 11.7 │  13.76 │ 1,000,574 │ NONE │
+│ 40 │ Alive                                          │  IV  │ 13.3 │  13.76 │   963,679 │ NONE │
+└────┴────────────────────────────────────────────────┴──────┴──────┴────────┴───────────┴──────┘
+rotaoff>
