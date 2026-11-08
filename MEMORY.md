@@ -243,7 +243,11 @@
   5 条记录全部解析正确；截至当天 5 首全部到期；与曲库 **5/5 匹配**
   （`king` / `lagtrain` / `monitoring` / `rokutyounen` / `wildcard`），无未匹配。
   离线测试：`.scratch/test_retired.py`。
-- **尚未接入 B40**。下一步把 `due(records)` 的曲目 ID 交给 `rotaoff/data.py` 在 B40 取值处过滤，
+- **已接入 B40（2026-11-08）**：`data.exclude_retired(song_datas)` 过滤，
+  `tasks._ranked()` 在排序前调用；`custom` 的 `b40` 字段也走同一条路。
+  列表读不到 / 曲名匹配不上时放进 `result["warnings"]`：交互模式打 stdout，
+  `run_tasks.py` 打 stderr，不静默假装排除。
+  只过滤 Rating / B40；`song` / `status` / `rtr` 保留。**图片仍用上游 `get_best40`，未过滤**。
   不改 `rotaeno/api/taptap_processor.py`。
 
 ## 验证过的命令

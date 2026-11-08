@@ -61,10 +61,20 @@ def _profile_name(task: dict) -> str:
     raise RotaOffError(t("profile-not-found", profile=name))
 
 
-def _ranked(snapshot: dict, task: dict, locale: str) -> list:
+def _ranked(snapshot: dict, task: dict, locale: str) -> tuple:
     song_datas = _check_diff(snapshot.get("songDatas") or [], task, locale)
+    song_datas, retired_info = data.exclude_retired(song_datas)
+    warnings = []
+    if retired_info.get("error"):
+        warnings.append(str(retired_info["error"]))
+    elif retired_info.get("missing"):
+        warnings.append(
+            "这些下架曲目在曲库里找不到，未能排除: "
+            + "、".join(retired_info["missing"])
+        )
     limit = int(task.get("limit", 40))
-    return sorted(song_datas, key=lambda item: item.get("ratingMix", 0), reverse=True)[:limit]
+    ranked = sorted(song_datas, key=lambda item: item.get("ratingMix", 0), reverse=True)[:limit]
+    return ranked, warnings
 
 
 def _task_custom(task: dict, render_image: bool) -> dict:
@@ -93,10 +103,12 @@ def _task_custom(task: dict, render_image: bool) -> dict:
     if "b40" in fields:
         columns = list(data.B40_COLUMNS)
         aligns = list(data.B40_ALIGNS)
-        rows = data.best40_rows(_ranked(snapshot, task, locale))
+        ranked, warnings = _ranked(snapshot, task, locale)
+        rows = data.best40_rows(ranked)
     else:
         columns = ["字段", "值"]
         aligns = ["left", "left"]
+        warnings = []
         rows = [
             [data.CUSTOM_LABELS.get(field, field), metrics[field]]
             for field in fields
@@ -118,6 +130,7 @@ def _task_custom(task: dict, render_image: bool) -> dict:
         "profile": profile_name,
         "raw": metrics,
         "image": image,
+        "warnings": warnings,
         "change_summary": data.change_summary(snapshot),
     }
 
@@ -135,15 +148,17 @@ def _task_b40(task: dict, render_image: bool) -> dict:
             lambda: rotaeno.processor.get_best40(require_ready_profile(profile_name)),
             f"b40-{profile_name}",
         )
+    ranked, warnings = _ranked(snapshot, task, locale)
     return {
         "title": "Best40",
         "columns": list(data.B40_COLUMNS),
-        "rows": data.best40_rows(_ranked(snapshot, task, locale)),
+        "rows": data.best40_rows(ranked),
         "aligns": list(data.B40_ALIGNS),
         "summary": data.profile_summary(snapshot),
         "profile": profile_name,
         "raw": snapshot,
         "image": image,
+        "warnings": warnings,
         "change_summary": data.change_summary(snapshot),
     }
 

@@ -23,4 +23,25 @@ matched, missing = retired.match(records, songs)
 print(f"matched={len(matched)} missing={missing}")
 print("ids=", sorted(matched))
 
+ids, missing, error = retired.status(today)
+assert ids == matched and missing == [] and error == "", (ids, missing, error)
+
+from rotaoff import data
+
+fake = [{"id": "king", "ratingMix": 14.0}, {"id": "other", "ratingMix": 13.0}]
+filtered, info = data.exclude_retired(fake)
+assert [item["id"] for item in filtered] == ["other"], filtered
+assert info["count"] == 5, info
+assert [item["id"] for item in data.best40_from({"songDatas": fake})] == ["other"]
+
+import contextlib
+import io
+
+from rotaoff import ui
+
+buffer = io.StringIO()
+with contextlib.redirect_stdout(buffer):
+    ui.render_result({"name": "T", "summary": [], "warnings": ["测试警告"], "show_table": False})
+assert "测试警告" in buffer.getvalue()
+
 print("OK")

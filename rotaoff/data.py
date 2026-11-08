@@ -20,7 +20,7 @@ import requests
 
 import rotaeno
 
-from . import patch
+from . import patch, retired
 from .paths import LIBRARY_GAPS_FILE, SAVES_DIR
 from .store import RotaOffError, active_profile_name, require_ready_profile
 
@@ -461,9 +461,22 @@ def fetch_snapshot(profile_name: str | None = None, record_history: bool = True)
     return snapshot
 
 
+def exclude_retired(song_datas: list) -> tuple:
+    """去掉已下架曲目的谱面，返回 `(过滤后的列表, 诊断信息)`。
+
+    只用于 Rating / B40；单曲、状态、区间查询仍保留这些谱面。
+    """
+    retired_ids, missing, error = retired.status()
+    if retired_ids:
+        song_datas = [
+            item for item in song_datas if str(item.get("id")) not in retired_ids
+        ]
+    return song_datas, {"count": len(retired_ids), "missing": missing, "error": error}
+
+
 def best40_from(snapshot: dict, limit: int = 40) -> list:
     """按 ratingMix 排序取前 N —— 与 rotaeno.processor.get_best40 的取法一致。"""
-    song_datas = snapshot.get("songDatas") or []
+    song_datas, _ = exclude_retired(snapshot.get("songDatas") or [])
     return sorted(song_datas, key=lambda item: item.get("ratingMix", 0), reverse=True)[:limit]
 
 

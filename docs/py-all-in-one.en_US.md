@@ -52,7 +52,7 @@ Queries (results are printed unless `output` export is enabled):
 
 | Command | Meaning |
 | --- | --- |
-| `b40` | Best40 table |
+| `b40` | Best40 table (retired songs excluded automatically; source `wiki/限时上架曲目列表.txt`, fetched at runtime) |
 | `song <title or alias>` | per-difficulty rating of one song |
 | `status [FC\|AP\|APP\|CLEAR\|...]` | list charts by play status |
 | `rtr <min> <max> [sort]` | level range; sort = `rating` / `score` / `level` |

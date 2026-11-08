@@ -83,6 +83,8 @@ def run_once(selected: list, args) -> int:
             ui.ok(f'{result["name"]}  {result["elapsed"]}s')
         else:
             ui.render_result(result)
+        for warning in result.get("warnings", []):
+            ui.warn(str(warning), stream=sys.stderr)
         if result.get("change_summary"):
             ui.info(result["change_summary"], stream=sys.stderr)
         for path in result.get("files", []):

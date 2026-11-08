@@ -110,3 +110,29 @@ def match(records: list, songs) -> tuple:
         else:
             missing.append(record["title"])
     return matched, missing
+
+
+def status(today: date | None = None) -> tuple:
+    """返回 `(已下架曲目 ID 集合, 未匹配曲名, 错误信息)`。
+
+    列表读不到或曲库不可用时，宁可返回空集合 + 错误信息让上层警告，
+    也不要假装「排除成功」。
+    """
+    try:
+        records = due(load(), today)
+    except OSError as exc:
+        return set(), [], f"读不到限时上架曲目列表: {exc}"
+
+    try:
+        import rotaeno
+
+        instance = rotaeno.database.song_data.song_data
+        songs = [
+            (song_id, (instance.get_song(song_id) or {}).get("title", ""))
+            for song_id in instance.getAllsong_ids()
+        ]
+    except Exception as exc:             # noqa: BLE001 - 曲库没准备好时不能拦死查询
+        return set(), [], f"曲库不可用，无法匹配下架曲目: {exc}"
+
+    matched, missing = match(records, songs)
+    return matched, missing, ""

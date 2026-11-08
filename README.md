@@ -54,7 +54,7 @@ Three steps:
 | `profile` / `profile use <name>` / `profile new <name>` | list, switch, create player profiles |
 | `profile set server cn\|global` | switch server (cn / global only; upstream's `private` was never implemented) |
 | `login [cn\|global]` | scan-to-login for TapTap |
-| `b40` | Best40 table |
+| `b40` | Best40 table (retired songs excluded automatically) |
 | `song <title or alias>` | per-difficulty Rating of one song |
 | `status [FC\|AP\|APP\|...]` | list charts by play status |
 | `rtr <min> [max] [sort]` | level range, sort = rating/score/level |
@@ -170,6 +170,16 @@ To keep layer 2 permanently available, grab a copy by hand:
 The rebuilt library lands in `data/song_data.db` (same schema as upstream: `songs` + `song_levels`); after the first build every start reads it directly and never touches the network. If `data/` is not writable the program degrades to an **in-memory library** (works for this session, must be rebuilt next time) and says so loudly.
 
 That file is **not committed** (see `.gitignore`): it is derived data, and its content belongs to the wiki contributors. Rebuilding it takes one command.
+
+## Retired songs
+
+When a limited-time song is retired, all of its charts stop counting toward Rating / Completion. `b40` excludes them automatically:
+
+- Source is the wiki “已下架曲目” (retired songs) table (`wiki/限时上架曲目列表.txt`; fetched at runtime, never committed)
+- Only songs whose retirement date is **<= today** are excluded; the “on sale” table keeps playing even if it lists a future date
+- Only Rating / B40 ranking is affected; `song` / `status` / `rtr` still show those charts
+- If the list cannot be read or a title does not match the library, RotaOff warns instead of silently pretending the exclusion worked
+- The `b40` image still comes from upstream `get_best40` and may include retired songs for now
 
 ## Save snapshots and changes
 

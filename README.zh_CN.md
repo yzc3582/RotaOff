@@ -54,7 +54,7 @@ python -m venv .venv
 | `profile` / `profile use <名>` / `profile new <名>` | 查看、切换、新建玩家配置 |
 | `profile set server cn\|global` | 换服务器（只支持国服/国际服；上游的 `private` 是半成品，本项目不支持） |
 | `login [cn\|global]` | 扫码登录 TapTap |
-| `b40` | Best40 表格 |
+| `b40` | Best40 表格（自动排除已下架曲目） |
 | `song <曲名或别名>` | 单曲各难度 Rating |
 | `status [FC\|AP\|APP\|...]` | 按成绩状态列曲目 |
 | `rtr <下限> [上限] [排序]` | 指定定数区间，排序 = rating/score/level |
@@ -168,6 +168,16 @@ library source D:\some\Songlist.json  :: 指定本地文件位置
 重建出来的库落在 `data/song_data.db`（与上游同 schema：`songs` + `song_levels`），第一次之后每次启动直接读它，不再联网。`data/` 不可写时程序会自动退化为**内存曲库**（本次会话照常能算，重启要重来），并明确警告。
 
 这份库**不进版本库**（见 `.gitignore`）：它是派生数据，内容版权归 wiki 的贡献者。要重建一条命令就够。
+
+## 已下架曲目
+
+限时上架曲目下架后，其全部难度谱面不再参与 Rating / Completion 计算。`b40` 会自动排除它们：
+
+- 数据源是 wiki 的「已下架曲目」表（`wiki/限时上架曲目列表.txt`，运行时获取，不入库）
+- 只排除下架日期 **<= 今天** 的曲目；「在售的限时上架曲目」即使写了未来日期也不动
+- 只影响 Rating / B40 排序；`song` / `status` / `rtr` 仍然能看到这些谱面
+- 列表读不到、或曲名在曲库里匹配不上时，会明确警告，不会静默假装排除
+- `b40` 图片仍由上游 `get_best40` 生成，暂时可能包含已下架曲目
 
 ## 存档快照与变化
 

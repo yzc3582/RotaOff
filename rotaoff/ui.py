@@ -206,6 +206,8 @@ def render_result(result: dict) -> None:
     print(paint(headline, BOLD, CYAN) + paint(f"  ({result.get('elapsed', 0)}s)", DIM))
     for text in result.get("summary", []):
         print("  " + str(text))
+    for warning in result.get("warnings", []):
+        warn(str(warning))
     if result.get("show_table", True):
         table(
             result.get("columns", []),
