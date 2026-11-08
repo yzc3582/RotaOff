@@ -249,6 +249,11 @@
   `run_tasks.py` 打 stderr，不静默假装排除。
   只过滤 Rating / B40；`song` / `status` / `rtr` 保留。**图片仍用上游 `get_best40`，未过滤**。
   不改 `rotaeno/api/taptap_processor.py`。
+- **构造数据验证（2026-11-08）**：用户没买这 5 首，无法用真实云存档验证，所以用本地曲库
+  构造 45 条谱面：5 首下架曲的 `ratingMix` 故意设成最高（15.0），其余 40 首 14.x。
+  结果 `_ranked()` 只返回 40 条、下架曲全部消失；`b40` 任务与 `custom rating,b40` 均通过。
+  把列表读不到时，`exclude_retired()` 不排除并返回 error，`_ranked()` 产出警告
+  （`读不到...`），验证了「不静默假装排除」。测试：`.scratch/test_b40_retired.py`。
 
 ## 验证过的命令
 
