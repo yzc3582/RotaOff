@@ -247,7 +247,8 @@
   `tasks._ranked()` 在排序前调用；`custom` 的 `b40` 字段也走同一条路。
   列表读不到 / 曲名匹配不上时放进 `result["warnings"]`：交互模式打 stdout，
   `run_tasks.py` 打 stderr，不静默假装排除。
-  只过滤 Rating / B40；`song` / `status` / `rtr` 保留。**图片仍用上游 `get_best40`，未过滤**。
+  只过滤 Rating / B40；`song` / `status` / `rtr` 保留。图片由上游 `get_best40` 生成，
+  `feat/b40-filter`（PR #2 已合并）已让它读 `retired_songs.db` 过滤。
   不改 `rotaeno/api/taptap_processor.py`。
 - **构造数据验证（2026-11-08）**：用户没买这 5 首，无法用真实云存档验证，所以用本地曲库
   构造 45 条谱面：5 首下架曲的 `ratingMix` 故意设成最高（15.0），其余 40 首 14.x。
@@ -262,8 +263,8 @@
   `retired.status()` 优先读注入实例，db 无数据才回退本地 wiki 文本 + 曲名匹配。
   双数据源已统一；`.gitignore` 加了 `data/retired_songs.db`。
   离线测试：`.scratch/test_retired_sync.py`。
-  `library` 现在会显示下架曲来源、文本、db、条数/已下架数，并在表格下方打印完整手动下载链接
-  `https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw`。
+  `library` 会显示曲库来源、曲库json、下架曲来源/文本/db/条数；默认**不打印下载链接**。
+  `library update` 只在抓取失败时打印对应链接；`library source`（`db source`）主动显示两个源的链接、不下载。
 
 ## 验证过的命令
 

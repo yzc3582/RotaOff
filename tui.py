@@ -402,19 +402,27 @@ def cmd_output(args) -> None:
     ui.warn("用法: output | output set <键> <值> | output export txt,md")
 
 
-def _show_library_gaps() -> None:
+def _show_library_gaps(locale: str = "zh-CN") -> None:
     """本次运行里上游扫描存档时发现的「曲库对不上」，平时被 `data.quiet_call` 吃掉。"""
     gaps = data.missing_from_library()
     if not gaps["songs"] and not gaps["levels"]:
         return
-    rows = [[song_id, "整首", "曲库没有这首，定数无从查起"] for song_id in gaps["songs"]]
+    rows = [
+        [song_id, t("library-gaps-whole-song", locale),
+         t("library-gaps-song-missing", locale)]
+        for song_id in gaps["songs"]
+    ]
     rows += [
-        [song_id, level, "非常规谱面，不计入 Rating"]
+        [song_id, level, t("library-gaps-level-special", locale)]
         for song_id, level in gaps["levels"]
     ]
     print()
-    ui.info("查询存档时有这些内容对不上本地曲库（不影响其它曲目的计算）：")
-    ui.table(["曲目 ID", "难度", "说明"], rows, aligns=["left", "center", "left"])
+    ui.info(t("library-gaps-title", locale))
+    ui.table(
+        [t("library-gaps-column-song", locale), t("library-gaps-column-level", locale),
+         t("library-gaps-column-note", locale)],
+        rows, aligns=["left", "center", "left"],
+    )
 
 
 def _display_path(path: str) -> str:
@@ -434,62 +442,82 @@ def _display_path(path: str) -> str:
 
 def cmd_library(args) -> None:
     """曲库：看现在用的哪份、更新、换源。"""
-    import json as _json
+    locale = store.profile_locale(store.active_profile_name())
 
     if not args or args[0] in ("show", "list", "status"):
-        status = library.status()
+        status = library.status(locale)
         retired_info = status.get("retired") or {}
         ui.table(
-            ["项", "值"],
+            [t("library-column-item", locale), t("library-column-value", locale)],
             [
-                ["当前来源", status["source"]],
-                ["曲目数", status.get("songs", "-")],
-                ["谱面数", status.get("charts", "-")],
-                ["IV-α 曲目", status.get("iv_alpha", "-")],
-                ["最新版本", status.get("latest_release") or "-"],
-                ["曲库文件", _display_path(status.get("path", "")) or "(未落盘)"],
-                ["Songlist 源", _display_path(status.get("source_json", "")) or "(无)"],
-                ["下架曲来源", "wiki「限时上架曲目列表」"],
-                ["下架曲文本", retired_info.get("text") or "(无)"],
-                ["下架曲数据库", retired_info.get("db") or "(无)"],
-                ["下架曲记录", f"{retired_info.get('count', '-')} 条 / "
-                              f"已下架 {retired_info.get('due', '-')} 首"],
+                [t("library-current-source", locale), status["source"]],
+                [t("library-songs", locale), status.get("songs", "-")],
+                [t("library-charts", locale), status.get("charts", "-")],
+                [t("library-iv-alpha", locale), status.get("iv_alpha", "-")],
+                [t("library-latest-version", locale), status.get("latest_release") or "-"],
+                [t("library-library-file", locale),
+                 _display_path(status.get("path", "")) or t("library-none", locale)],
+                [t("library-songlist-origin", locale),
+                 t("library-origin-songlist", locale)],
+                [t("library-songlist-json", locale),
+                 _display_path(status.get("source_json", "")) or t("library-none", locale)],
+                [t("library-retired-origin", locale),
+                 t("library-origin-retired", locale)],
+                [t("library-retired-text", locale),
+                 retired_info.get("text") or t("library-none", locale)],
+                [t("library-retired-db", locale),
+                 retired_info.get("db") or t("library-none", locale)],
+                [t("library-retired-records", locale), t(
+                    "library-retired-records-value", locale,
+                    count=retired_info.get("count", "-"),
+                    due=retired_info.get("due", "-"),
+                )],
             ],
+            max_width=60,
         )
-        if retired_info.get("url"):
-            ui.info(f"下架曲列表手动下载: {retired_info['url']}")
         if status.get("warning"):
             ui.warn(status["warning"])
         if not status.get("built"):
-            ui.warn("现在用的还是 rotaeno/ 自带的旧曲库（2.9.0），"
-                    "缺定数的谱面算不出 Rating。执行 `library update` 更新。")
-        _show_library_gaps()
+            ui.warn(t("library-old-warning", locale))
+        _show_library_gaps(locale)
         return
 
     if args[0] == "update":
         local = "--local" in args or "-l" in args
-        stats = library.update(local=local)
-        ui.ok(f"曲库已更新: {stats['songs']} 首 / {stats['charts']} 谱面 / "
-              f"IV-α {stats['iv_alpha']} 首 / 版本 {stats['latest_release'] or '未知'}")
+        stats = library.update(local=local, locale=locale)
+        ui.ok(t(
+            "library-updated", locale,
+            songs=stats["songs"],
+            charts=stats["charts"],
+            iv_alpha=stats["iv_alpha"],
+            version=stats["latest_release"] or t("library-unknown", locale),
+        ))
         for note in stats.get("notes") or []:
             ui.info(note)
         if stats.get("path"):
-            ui.info(f"写入: {_display_path(stats['path'])}")
-            ui.info("已在当前进程生效；下次启动会自动读这份库。")
+            ui.info(t("library-write", locale, path=_display_path(stats["path"])))
+            ui.info(t("library-effective", locale))
         else:
-            ui.warn("没能落盘，当前只是在内存里生效；下次启动要重新 update。"
-                    "按上面那条提示修好 data/ 的写权限就能持久化。")
+            ui.warn(t("library-not-persisted", locale))
         return
 
     if args[0] in ("source", "path"):
         if len(args) < 2:
-            ui.info(f"Songlist.json 位置: {_display_path(library.source_path())}")
+            retired_info = library.status().get("retired") or {}
+            ui.info(t("library-songlist-json-location", locale,
+                      path=_display_path(library.source_path())))
+            ui.info(t("library-manual-songlist", locale, url=library.SONGLIST_URL))
+            ui.info(t("library-retired-text-location", locale,
+                      path=retired_info.get("text") or t("library-none", locale)))
+            ui.info(t("library-manual-retired", locale,
+                      url=retired_info.get("url") or ""))
             return
         store.set_library_path(" ".join(args[1:]))
-        ui.ok(f"已保存 Songlist.json 位置: {_display_path(library.source_path())}")
+        ui.ok(t("library-source-saved", locale,
+                path=_display_path(library.source_path())))
         return
 
-    ui.warn("用法: library | library update [--local] | library source <路径>")
+    ui.warn(t("library-usage", locale))
 
 
 def cmd_interval(args) -> None:

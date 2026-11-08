@@ -99,17 +99,17 @@ Other:
 | `library` | which song library is in use, songs / charts / IV-α / latest version; also the retired-song source, text and db paths |
 | `library update` | fetch `Template:Songlist.json` from the wiki (solves the Anubis proof-of-work) and rebuild `data/song_data.db` |
 | `library update --local` | rebuild from the local `Songlist.json` only (offline) |
-| `library source <path>` | point at another `Songlist.json` |
+| `library source [path]` | show manual download links for both sources (no download), or point at another `Songlist.json` |
 | `interval <seconds>` | save the automation loop interval, `0` = run once |
 | `help` / `quit` | — |
 
 > `library update` falls back in three steps: online fetch → local `Songlist.json` → the stale upstream db (with a warning that charts without a chart constant cannot be rated). Grab the json by hand from
 > <https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw> if fetching fails.
 >
-> `library` also shows the retired-song text (`wiki/限时上架曲目列表.txt`), db (`data/retired_songs.db`),
-> record count and due count, and prints the manual download link:
-> <https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw>. `library update` refreshes it
-> (`--local` uses the local text).
+> `library` shows both sources: the song-library source (`Template:Songlist.json`) and the
+> retired-song source (`限时上架曲目列表`), plus the local json/text/db paths and record counts.
+> Download links are **not printed by default**: `library update` prints the matching link only
+> when a fetch fails, and `library source` shows both links without downloading.
 
 ## Task wizard prompts (`task add`)
 

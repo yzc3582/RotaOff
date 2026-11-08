@@ -150,6 +150,7 @@ The data comes from the wiki's `Template:Songlist.json` — the very same templa
 library                       :: which library is in use, how many songs / charts
 library update                :: fetch the latest Songlist.json and rebuild data/song_data.db
 library update --local        :: use only the local Songlist.json (offline)
+library source                :: show manual download links for both sources (no download)
 library source D:\some\Songlist.json  :: point at a local file
 ```
 
@@ -171,11 +172,21 @@ The rebuilt library lands in `data/song_data.db` (same schema as upstream: `song
 
 That file is **not committed** (see `.gitignore`): it is derived data, and its content belongs to the wiki contributors. Rebuilding it takes one command.
 
-`library` also lists the retired-song source (`wiki/限时上架曲目列表.txt`), the db (`data/retired_songs.db`), the record count and the due count, and prints the manual download link:
+`library` lists both sources:
 
-<https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw>
+- **Song library source**: wiki “song constants list” (actual source `Template:Songlist.json`)
+- **Song library json**: path to the local `Songlist.json`
+- **Retired-song source**: wiki “limited-time song list” (actual source `限时上架曲目列表`)
+- **Retired text / db / record count**: `wiki/限时上架曲目列表.txt`, `data/retired_songs.db`, `11 records / 5 retired`
 
-`library update` refreshes that db as well; `--local` uses the local text and stays offline.
+Download links are **not printed by default**. `library update` prints the matching link only when a fetch fails; run `library source` (`db source` is the same command) to show both links without downloading:
+
+```text
+Songlist.json manual download: https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw
+Retired-song list manual download: https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw
+```
+
+`library update` refreshes the retired-song db as well; `--local` uses the local text and stays offline.
 
 ## Retired songs
 

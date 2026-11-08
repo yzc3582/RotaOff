@@ -33,9 +33,11 @@ import sqlite3
 import time
 
 from . import anubis, retired, ui
+from .i18n import DEFAULT_LOCALE, t
 from .store import RotaOffError
 
 WIKI_PAGE = "Template:Songlist.json"
+SONGLIST_URL = f"https://wiki.rotaeno.cn/index.php?title={WIKI_PAGE}&action=raw"
 
 # ratingClass → 库里的难度名。200 是官方给 IV-α 用的特殊值
 LEVEL_NAMES = {0: "I", 1: "II", 2: "III", 3: "IV", 200: "IV_Alpha"}
@@ -345,14 +347,14 @@ def database_path() -> str:
     return os.path.join(DATA_DIR, "song_data.db")
 
 
-def status() -> dict:
+def status(locale: str = DEFAULT_LOCALE) -> dict:
     """当前进程用的是哪份曲库（不联网、不写盘）。"""
     import sys
 
     module = sys.modules.get("rotaeno.database.song_data")
     instance = getattr(module, "song_data", None) if module else None
     info = {
-        "source": "rotaeno/database/song_data.db（上游旧库）",
+        "source": t("library-source-upstream", locale),
         "built": False,
         "path": "",
         "source_json": source_path(),
@@ -366,14 +368,14 @@ def status() -> dict:
 
     info.update(_stats_of(instance))
     if isinstance(instance, MemorySongData):
-        info["source"] = "内存曲库（未落盘）"
+        info["source"] = t("library-source-memory", locale)
         info["built"] = True
     elif os.path.isfile(database_path()) and os.path.getsize(database_path()) > 0:
         info["source"] = "data/song_data.db"
         info["path"] = database_path()
         info["built"] = True
     elif info.get("songs", 0) > 307:
-        info["source"] = "运行期替换的曲库"
+        info["source"] = t("library-source-runtime", locale)
         info["built"] = True
     return info
 
@@ -386,7 +388,8 @@ def _version_key(text: str) -> list:
     return parts
 
 
-def update(local: bool = False, path: str | None = None) -> dict:
+def update(local: bool = False, path: str | None = None,
+           locale: str = DEFAULT_LOCALE) -> dict:
     """更新 data/song_data.db。
 
     local=True 时只读本地文件（不联网）；否则先自动抓，失败再回退本地文件。
@@ -398,18 +401,19 @@ def update(local: bool = False, path: str | None = None) -> dict:
 
     payload = None
     if not local:
-        ui.info("正在从 wiki.rotaeno.cn 拉取 Songlist.json（需要先过 Anubis 反爬验证）…")
+        ui.info(t("library-fetching-songlist", locale))
         try:
             payload = fetch_remote()
             stamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            notes.append(f"来源：wiki 在线抓取（{stamp}）")
+            notes.append(t("library-source-online", locale, stamp=stamp))
         except RotaOffError as exc:
             ui.warn(str(exc))
-            notes.append("在线抓取失败，回退到本地文件")
+            notes.append(t("library-source-online-failed", locale))
+            notes.append(t("library-manual-songlist", locale, url=SONGLIST_URL))
 
     if payload is None:
         payload = load_local(path)
-        notes.append(f"来源：本地 {os.path.basename(path)}")
+        notes.append(t("library-source-local", locale, name=os.path.basename(path)))
 
     try:
         stats = build_database(payload, target)
@@ -418,24 +422,32 @@ def update(local: bool = False, path: str | None = None) -> dict:
         instance = memory_database(payload)
         activate(instance)
         notes.append(str(exc))
-        notes.append("已改用内存曲库，本次会话照常可用，但下次启动要重来。")
+        notes.append(t("library-memory-fallback", locale))
         stats = _stats_of(instance)
-        stats["path"] = "(内存，未落盘)"
+        stats["path"] = t("library-memory-path", locale)
 
     try:
-        from . import retired
-
         if local:
-            retired_stats = retired.sync(text=retired.read_local())
+            retired_stats = retired.sync(text=retired.read_local(), locale=locale)
         else:
-            retired_stats = retired.sync()
-        note = f"下架曲目：{retired_stats['count']} 条（{retired_stats['source']}）"
+            retired_stats = retired.sync(locale=locale)
+        notes.append(t(
+            "library-retired-updated", locale,
+            count=retired_stats["count"], source=retired_stats["source"],
+        ))
+        notes.append(t(
+            "library-retired-paths", locale,
+            text=retired_stats["text"], db=retired_stats["db"],
+        ))
         if retired_stats.get("warning"):
-            note += f"；{retired_stats['warning']}"
-        notes.append(note)
-        notes.append(f"下架曲文本: {retired_stats['text']}；数据库: {retired_stats['db']}")
+            notes.append(retired_stats["warning"])
+            notes.append(t("library-manual-retired", locale, url=retired_stats["url"]))
     except Exception as exc:             # noqa: BLE001 - 刷新下架曲不该毁掉曲库更新
-        notes.append(f"下架曲目列表刷新失败：{exc}")
+        notes.append(t("library-retired-failed", locale, error=exc))
+        notes.append(t(
+            "library-manual-retired", locale,
+            url=f"https://wiki.rotaeno.cn/index.php?title={retired.PAGE}&action=raw",
+        ))
 
     stats["notes"] = notes
     return stats

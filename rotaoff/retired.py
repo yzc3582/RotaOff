@@ -23,6 +23,7 @@ import re
 import sqlite3
 from datetime import date
 
+from .i18n import DEFAULT_LOCALE, t
 from .store import RotaOffError
 
 PAGE = "限时上架曲目列表"
@@ -167,14 +168,14 @@ def summary(today: date | None = None) -> dict:
     }
 
 
-def _write_db(records: list, path: str) -> int:
+def _write_db(records: list, path: str, locale: str = DEFAULT_LOCALE) -> int:
     rows = [
         (record["id"], record["title"], record["start"], record["end"])
         for record in records
         if record.get("id")
     ]
     if not rows:
-        raise RotaOffError("限时上架曲目列表里没有任何曲目 ID，页面结构可能变了。")
+        raise RotaOffError(t("retired-no-ids", locale))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     connection = sqlite3.connect(path)
     try:
@@ -194,13 +195,14 @@ def _write_db(records: list, path: str) -> int:
     return len(rows)
 
 
-def sync(text: str | None = None, path: str | None = None, timeout: int = 30) -> dict:
+def sync(text: str | None = None, path: str | None = None, timeout: int = 30,
+         locale: str = DEFAULT_LOCALE) -> dict:
     """现场抓 wiki → 清洗两张表 → 覆盖写 `data/retired_songs.db`。
 
     远程失败时回退本地 `wiki/限时上架曲目列表.txt`；两边都失败才抛错。
     """
     warning = ""
-    source = "传入文本"
+    source = t("retired-source-text", locale)
     if text is None:
         from . import anubis
 
@@ -208,29 +210,30 @@ def sync(text: str | None = None, path: str | None = None, timeout: int = 30) ->
             text = anubis.fetch_text(
                 "/index.php", {"title": PAGE, "action": "raw"}, timeout=timeout
             )
-            source = "wiki 在线抓取"
+            source = t("retired-source-online", locale)
         except Exception as exc:             # noqa: BLE001 - 在线失败要能回退
-            warning = f"在线抓取失败，改用本地文本: {exc}"
+            warning = t("retired-fetch-failed", locale, error=exc)
 
     if text is None:
         try:
             text = read_local()
-            source = f"本地 {os.path.basename(local_path())}"
+            source = t("retired-source-local", locale, name=os.path.basename(local_path()))
         except OSError as exc:
-            raise RotaOffError(f"没有可用的限时上架曲目列表: {exc}") from exc
+            raise RotaOffError(t("retired-no-list", locale, error=exc)) from exc
 
     records = parse_all(text)
     if not records:
-        raise RotaOffError("限时上架曲目列表里没有解析到任何记录，页面结构可能变了。")
+        raise RotaOffError(t("retired-empty", locale))
 
     target = path or database_path()
-    written = _write_db(records, target)
+    written = _write_db(records, target, locale)
     missing = [record["title"] for record in records if not record.get("id")]
     return {
         "count": written,
         "path": target,
         "text": _relative(local_path()),
         "db": _relative(target),
+        "url": f"https://wiki.rotaeno.cn/index.php?title={PAGE}&action=raw",
         "source": source,
         "warning": warning,
         "missing": missing,

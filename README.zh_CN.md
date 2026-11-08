@@ -148,6 +148,7 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
 library                       :: 现在用的是哪份库、多少首、多少谱面
 library update                :: 联网抓最新 Songlist.json 并重建 data/song_data.db
 library update --local        :: 只用仓库根目录的 Songlist.json（不联网）
+library source                :: 显示两个数据源的手动下载链接（不下载）
 library source D:\some\Songlist.json  :: 指定本地文件位置
 ```
 
@@ -169,11 +170,21 @@ library source D:\some\Songlist.json  :: 指定本地文件位置
 
 这份库**不进版本库**（见 `.gitignore`）：它是派生数据，内容版权归 wiki 的贡献者。要重建一条命令就够。
 
-`library` 还会列出下架曲列表的维护信息：wiki 来源、文本文件 `wiki/限时上架曲目列表.txt`、数据库 `data/retired_songs.db`，以及「11 条 / 已下架 5 首」。完整的手动下载链接会打印在表格下方：
+`library` 会同时列出两个数据源：
 
-<https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw>
+- **曲库来源**：wiki「定数详表」（真实来源 `Template:Songlist.json`）
+- **曲库json**：本地 `Songlist.json` 的路径
+- **下架曲来源**：wiki「限时上架曲目列表」（真实来源 `限时上架曲目列表`）
+- **下架曲文本 / 数据库 / 记录数**：`wiki/限时上架曲目列表.txt`、`data/retired_songs.db`、`11 条 / 已下架 5 首`
 
-`library update` 会顺带刷新这份 db；`--local` 用本地文本，不联网。
+默认**不打印下载链接**。`library update` 只在抓取失败时才打印对应链接；想主动看链接（不下载）用 `library source`（`db source` 是同一个命令）：
+
+```text
+Songlist.json 手动下载: https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw
+下架曲列表手动下载:     https://wiki.rotaeno.cn/index.php?title=限时上架曲目列表&action=raw
+```
+
+`library update` 会顺带刷新下架曲 db；`--local` 用本地文本，不联网。
 
 ## 已下架曲目
 
