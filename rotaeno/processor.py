@@ -30,6 +30,15 @@ def get_best40(user_profile: dict, just_data: bool = False, just_html: bool = Fa
     if user_profile["serverCode"] == "cn": region = api.taptap.ServerRegion.CN
     elif user_profile["serverCode"] == "global": region = api.taptap.ServerRegion.GLOBAL
     user_data = api.taptap_processor.TapTapAPI(region=region, user_profile=user_profile).get_cloud_save(save_path=os.path.join(CLOUD_SAVES_DIR, f"{user_profile.get('objectID', 'EMPTY')}-{time.time()}.msgpack"), add_to_database=True)
+    
+    # 下架曲目不再参与 Rating / Completion，Best40 也要排除（数据与出处见 database/retired_songs.py）
+    retired_ids = database.retired_songs.retired_songs.get_retired_ids()
+    if retired_ids:
+        user_data["songDatas"] = [
+            song_data for song_data in user_data["songDatas"]
+            if song_data.get("id") not in retired_ids
+        ]
+    
     user_data["songDatas"] = sorted(user_data["songDatas"], key=lambda x: x["ratingMix"], reverse=True)[:40]
     
     if just_data: return user_data["songDatas"]
