@@ -216,12 +216,14 @@
 - 真实 `update`（无云存档更新）：时间仍为 `2026-11-06 23:21:46`，`14.7025+0.0000`、无变化。
 - `library`：`built=True`，434 首 / 1770 谱面 / 34 IV-α。
 - 用户自己的 `tui` 实例仍持锁（pid 29860，23:19:59 启动）；`run_tasks.py --force --dry-run` 通过。
-- **状态：停在 Anubis 之前。** 交接细节见 `MaterialsForAI/第三次暂歇文档.md`。
+- **状态：Anubis 已抽取（2026-11-08），停在「下架曲目 B40 排除」之前。**
+  交接细节见 `MaterialsForAI/第三次暂歇文档.md`。
 - 无后台复检（同日 23:40）：`--list` / `--dry-run` / 真实 `--task 2` 均通过；
   退出后 `.info` 清理，0 字节 `rotaoff.lock` 保留是 filelock 正常行为。
 - 压测（23:37）：55 任务筛 11 个 × 5s × 120s → 22 轮、242 次失败，原因全是沙箱
-  `hit restricted [106.75.60.152:443]` / `WinError 10051`（**subprocess 子进程网络被限制，不是程序 bug**）；
-  60s 对照组同样。进程内脚本 `.scratch/run_pressure_inproc.py` 待跑。
+  `hit restricted [106.75.60.152:443]` / `WinError 10051`（subprocess 子进程网络被限制）；
+  60s 对照组同样。进程内脚本 `.scratch/run_pressure_inproc.py` 两次尝试都被中断，
+  用户判断当时**可能没网** → **压测未完成、不算验证通过**；下次先确认网络再续跑。
   `data/tasks.json` 已恢复原 3 任务。
 
 ## 验证过的命令
@@ -275,14 +277,15 @@ pyright rotaoff\data.py rotaoff\tasks.py rotaoff\patch.py rotaoff\ui.py rotaoff\
   2026-11-06 已定案：交互 stdout、自动化 stderr）。
 - 排在 Anubis 之前。
 
-**2. Anubis PoW 拆成独立模块（下一阶段第一件事）**：目前内嵌在 `library.py`：
-`fetch_remote()` `:55-98`、`_parse_challenge()` `:101-115`、`_solve_challenge()` `:118-153`，
-常量在 `:42-50`。抽到 `rotaoff/anubis.py`，暴露同步 `fetch_text(...)`，library 只保留
-「文本 → JSON → 校验 songs」。
-- 必须保留：GET → 解析 `<script id="anubis_challenge">`（**内容是双引号字符串，`json.loads` 两次**）
-  → 暴力 `sha256(randomData + i)` 找 `difficulty` 个前导 0 → 提交 `pass-challenge` 时
-  **必须带 `id`**（漏了 HTTP 500 + `techaro.lol-anubis-cookie-verification`）→ 同 Session 再 GET。
-- 验证：离线 mock Session（无挑战 / 有挑战 / 挑战失败）；真实 `library update` 由用户跑。
+**2. Anubis PoW 拆成独立模块：✅ 已完成（2026-11-08）**。新模块 `rotaoff/anubis.py`：
+`new_session()` / `fetch()` / `fetch_text()`；`library.fetch_remote()` 只剩「拿响应 → 校验
+HTTP / JSON / songs」。`library.py` 已不再 import `hashlib` / `requests` / `re`。
+- 离线测试 `.scratch/test_anubis.py`：无挑战 1 次请求；有挑战 3 次（目标页 → pass-challenge
+  → 目标页），断言 `id` / `redir` / 前导 0。**通过**。
+- 必须保留的行为：`<script id="anubis_challenge">` 内容是双引号字符串，`json.loads` 两次；
+  pass-challenge **必须带 `id`**，漏了会 HTTP 500 + `techaro.lol-anubis-cookie-verification`。
+- 未跑真实 `library update`（用户要求沙箱里少试网络）。
+- 下架曲页面以后直接复用 `anubis.fetch_text("/index.php", {"title": "限时上架曲目列表", "action": "raw"})`。
 
 **3. 下架曲目排除出 b40**：数据源 `wiki/限时上架曲目列表.txt`，只在运行时获取、不进仓库。
 - 已确认格式：曲名行 `| -{[[六兆年と一夜物語]]}-`，时间行 `2025/05/30 - 2026/06/30`（可能带 `<ref>`）。

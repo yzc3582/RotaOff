@@ -1,0 +1,128 @@
+Windows PowerShell 5.1
+版权所有 (C) Microsoft Corporation。保留所有权利。
+
+加载个人及系统配置文件用了 533 毫秒。
+ RotaOff  uvx tui.py
+error: It looks like you tried to run a Python script at `tui.py`, which is not supported by `uvx`
+
+hint: Use `uv run tui.py` instead
+ RotaOff  uv run tui.py
+──────────────────────────────────────────────
+  RotaOff
+  Rotaeno 数值终端 · 无 Discord · 无异步
+──────────────────────────────────────────────
+当前配置: default | 图片: off | 导出: (只打印)
+账号
+  profile                     查看所有配置与当前配置
+  profile use <名称>          切换当前配置
+  profile new <名称>          新建一个配置
+  profile set server cn|global      设置服务器
+  profile set objectid <ID>        设置 objectID
+  profile set session <TOKEN>      设置 sessionToken
+  login [cn|global]           扫码登录 TapTap 并自动填好上面三项
+                              只支持 cn / global；上游的 private 服务器是半成品，本项目不支持
+
+查询（结果只在终端显示，除非开了 output 导出）
+  b40                         Best40 表格
+  song <曲名或别名>            单曲所有难度的 Rating
+  status [FC|AP|APP|CLEAR|...] 按状态列曲目
+  rtr <下限> <上限> [排序]      指定定数区间，排序 = rating/score/level
+  custom [字段...]             自定义字段，如 custom username rating level completion
+  update                      下载一次云存档并报告与上次相比的变化（别名 refresh）
+
+任务（保存在 data/tasks.json，可交给 run_tasks.py 自动跑）
+  tasks                       列出任务
+  task add                    引导式新建任务
+  task rm <序号>              删除任务
+  task run [序号|all]         执行任务
+
+输出
+  output                      查看输出设置
+  output set export txt,md    默认导出格式（留空则只打印）
+  output set template <模板>   文件名模板，可用 {type} {name} {profile} {stamp}
+  output set latest <模板>     额外写一份固定名副本，方便 OBS 读取
+  output set dir <目录>        输出目录
+  output set image on|off     是否生成图片（默认 off）
+
+其它
+  library                     查看当前用的是哪份曲库
+  library update              从 wiki 抓最新 Songlist.json 并重建 data/song_data.db
+  library update --local      只用本地的 Songlist.json（不联网）
+  library source [路径]       指定 Songlist.json 的位置
+  interval <秒>               保存自动化循环间隔，0 = 只跑一次
+  help / quit
+rotaoff> db
+┌─────────────┬────────────────────────────────────────────────┐
+│ 项          │ 值                                             │
+├─────────────┼────────────────────────────────────────────────┤
+│ 当前来源    │ data/song_data.db                              │
+│ 曲目数      │ 434                                            │
+│ 谱面数      │ 1770                                           │
+│ IV-α 曲目   │ 34                                             │
+│ 最新版本    │ -                                              │
+│ 曲库文件    │ D:\yzc3582\files_new\Projects\RotaOff\data\so… │
+│ Songlist 源 │ D:\yzc3582\files_new\Projects\RotaOff\Songlis… │
+└─────────────┴────────────────────────────────────────────────┘
+
+查询存档时有这些内容对不上本地曲库（不影响其它曲目的计算）：
+┌─────────────────────┬──────┬────────────────────────────┐
+│ 曲目 ID             │ 难度 │ 说明                       │
+├─────────────────────┼──────┼────────────────────────────┤
+│ doppelganger        │ 整首 │ 曲库没有这首，定数无从查起 │
+│ terabyte-connection │ 整首 │ 曲库没有这首，定数无从查起 │
+│ true                │  Sp  │ 非常规谱面，不计入 Rating  │
+└─────────────────────┴──────┴────────────────────────────┘
+rotaoff> db update
+正在从 wiki.rotaeno.cn 拉取 Songlist.json（需要先过 Anubis 反爬验证）…
+✔ 曲库已更新: 434 首 / 1770 谱面 / IV-α 34 首 / 版本 2.99.0
+来源：wiki 在线抓取（2026-11-08 15:21:31）
+写入: D:\yzc3582\files_new\Projects\RotaOff\data\song_data.db
+已在当前进程生效；下次启动会自动读这份库。
+rotaoff> refresh
+
+▶ Update  (0.78s)
+  云存档更新时间: 2026-11-07 13:01:01
+  拉取时间: 2026-11-08 15:21:52
+  Rating 变化: 14.7026+0.0000
+  成绩变化: After Rain (IV): 1,009,919 → 1,009,946 (+27)｜14.2920 → 14.2947
+┌────────────────┬───────────────────────────────────────────────┐
+│ 字段           │ 值                                            │
+├────────────────┼───────────────────────────────────────────────┤
+│ 云存档更新时间 │ 2026-11-07 13:01:01                           │
+│ 拉取时间       │ 2026-11-08 15:21:52                           │
+│ Rating 变化    │ 14.7026+0.0000                                │
+│ 成绩变化       │ After Rain (IV): 1,009,919 → 1,009,946 (+27)… │
+└────────────────┴───────────────────────────────────────────────┘
+rotaoff> （上传又一份云存档）
+✘ 未知命令: （上传又一份云存档）（输入 help 看看）
+rotaoff> refresh
+
+▶ Update  (0.77s)
+  云存档更新时间: 2026-11-08 15:27:09
+  拉取时间: 2026-11-08 15:27:16
+  Rating 变化: 14.7061+0.0035
+  成绩变化: 粛聖!! ロリ神レクイエム☆ (IV): 994,934 → 1,005,632 (+10,698)｜13.0467 → 14.1080
+┌────────────────┬────────────────────────────────────────────────┐
+│ 字段           │ 值                                             │
+├────────────────┼────────────────────────────────────────────────┤
+│ 云存档更新时间 │ 2026-11-08 15:27:09                            │
+│ 拉取时间       │ 2026-11-08 15:27:16                            │
+│ Rating 变化    │ 14.7061+0.0035                                 │
+│ 成绩变化       │ 粛聖!! ロリ神レクイエム☆ (IV): 994,934 → 1,00… │
+└────────────────┴────────────────────────────────────────────────┘
+rotaoff> refresh
+
+▶ Update  (0.71s)
+  云存档更新时间: 2026-11-08 15:27:09
+  拉取时间: 2026-11-08 15:27:25
+  Rating 变化: 14.7061+0.0000
+  成绩变化: 无变化
+┌────────────────┬─────────────────────┐
+│ 字段           │ 值                  │
+├────────────────┼─────────────────────┤
+│ 云存档更新时间 │ 2026-11-08 15:27:09 │
+│ 拉取时间       │ 2026-11-08 15:27:25 │
+│ Rating 变化    │ 14.7061+0.0000      │
+│ 成绩变化       │ 无变化              │
+└────────────────┴─────────────────────┘
+rotaoff>

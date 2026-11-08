@@ -11,12 +11,13 @@
 
 提示：`MEMORY.md` 存放记忆、经验等。你可以在需要的时候对其读写。
 
-## 当前状态（2026-11-06）
+## 当前状态（2026-11-08）
 
 - 入口：`tui.py`（配置 + 交互）、`run_tasks.py`（纯自动化）、`bot.py`（3 行启动器）。
 - 交接文档：`MaterialsForAI/第三次暂歇文档.md`（下一阶段从这里读）。
-- 当前停在 **Anubis 之前**：下一步才是把 PoW 抽成 `rotaoff/anubis.py`，
-  之后才是下架曲目排除出 B40。**没有明确指令不要提前开工。**
+- `rotaoff/anubis.py` 已抽取：通用「Session + PoW」抓取层，`library.fetch_remote()` 已改用它。
+- 当前停在 **下架曲目 B40 排除之前**。**没有明确指令不要提前开工。**
+- 离线验证：`.scratch/test_anubis.py`、`.scratch/test_snapshot_diff.py`。
 
 ## 硬约束
 
@@ -34,5 +35,6 @@
 .venv\Scripts\python run_tasks.py --list
 .venv\Scripts\python run_tasks.py --dry-run
 .venv\Scripts\python .scratch\test_snapshot_diff.py
+.venv\Scripts\python .scratch\test_anubis.py
 pyright rotaoff\data.py rotaoff\tasks.py rotaoff\patch.py tui.py run_tasks.py
 ```
