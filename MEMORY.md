@@ -207,6 +207,11 @@
   `tasks.py` 的 `task` 字面量被推断成 `dict[str, str]`（给 `task: dict` 宽标注可一次消掉）、
   `tui.py` / `run_tasks.py` 的 `TextIO.reconfigure`、`library.py` / `patch.py` 的模块属性赋值。
   `requests` 的 warning 是缺 stub，忽略。
+- **表格显示（2026-11-08）**：截断根因是 `ui.table_lines` 的 `max_width=46` 写死，
+  与终端宽度无关（`ui.py` 不读 `get_terminal_size`）。
+  `ui.render_result` 现在看 `result["show_table"]`；`update` 传 `show_table=False`，
+  摘要已经完整，不再重复打一张会被截断的表格。
+  `db` / `library` 的路径用 `tui._display_path()` 显示为相对仓库根目录，仓库外路径保持绝对。
 
 ## 收尾检查（2026-11-06 23:30）
 

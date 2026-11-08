@@ -206,13 +206,14 @@ def render_result(result: dict) -> None:
     print(paint(headline, BOLD, CYAN) + paint(f"  ({result.get('elapsed', 0)}s)", DIM))
     for text in result.get("summary", []):
         print("  " + str(text))
-    table(
-        result.get("columns", []),
-        result.get("rows", []),
-        aligns=result.get("aligns"),
-        limit=result.get("limit"),
-        empty_text=result.get("empty_text", "（没有数据）"),
-    )
+    if result.get("show_table", True):
+        table(
+            result.get("columns", []),
+            result.get("rows", []),
+            aligns=result.get("aligns"),
+            limit=result.get("limit"),
+            empty_text=result.get("empty_text", "（没有数据）"),
+        )
     image = result.get("image")
     if image:
         ok(f"图片已保存: {image}")

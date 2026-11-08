@@ -398,10 +398,11 @@ def describe_task(task: dict, index: int = 0) -> str:
 
 
 def run_task(task: dict, render_image: bool | None = None, formats=None,
-             report_changes: bool = True) -> dict:
+             report_changes: bool = True, show_table: bool = True) -> dict:
     """执行一条任务：取数据 -> 组结果 -> 可选导出文本 / 图片。
 
     `report_changes=False` 用于 `update`：它自己会完整报告变化，避免摘要重复。
+    `show_table=False` 用于 `update`：摘要已经完整，不再重复打一张会被截断的表格。
     """
     kind = str(task.get("type") or "").strip().lower()
     builder = TASK_BUILDERS.get(kind)
@@ -419,6 +420,7 @@ def run_task(task: dict, render_image: bool | None = None, formats=None,
     result["elapsed"] = round(time.time() - started, 2)
     if not report_changes:
         result["change_summary"] = ""
+    result["show_table"] = show_table
 
     task_settings = dict(settings)
     if task.get("export") is not None:

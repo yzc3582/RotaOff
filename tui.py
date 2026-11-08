@@ -131,8 +131,8 @@ def _ask(label: str, default: str = "") -> str:
     return text or default
 
 
-def _run(task: dict, report_changes: bool = True) -> dict:
-    result = tasks.run_task(task, report_changes=report_changes)
+def _run(task: dict, report_changes: bool = True, show_table: bool = True) -> dict:
+    result = tasks.run_task(task, report_changes=report_changes, show_table=show_table)
     ui.render_result(result)
     if result.get("change_summary"):
         ui.info(result["change_summary"])
@@ -260,7 +260,7 @@ def cmd_update(args) -> None:
         name="Update",
         fields=["cloud_updated_at", "fetched_at", "rating_diff", "songs_diff"],
         layout="{label}: {value}",
-    ), report_changes=False)
+    ), report_changes=False, show_table=False)
 
 
 def cmd_custom(args) -> None:
@@ -417,6 +417,21 @@ def _show_library_gaps() -> None:
     ui.table(["曲目 ID", "难度", "说明"], rows, aligns=["left", "center", "left"])
 
 
+def _display_path(path: str) -> str:
+    """仓库内的绝对路径按相对路径显示；仓库外保持原样。"""
+    if not path or not os.path.isabs(path):
+        return path or ""
+    from rotaoff.paths import BASE_DIR
+
+    try:
+        relative = os.path.relpath(path, BASE_DIR)
+    except ValueError:
+        return path
+    if relative.startswith(".."):
+        return path
+    return relative.replace(os.sep, "/")
+
+
 def cmd_library(args) -> None:
     """曲库：看现在用的哪份、更新、换源。"""
     import json as _json
@@ -431,8 +446,8 @@ def cmd_library(args) -> None:
                 ["谱面数", status.get("charts", "-")],
                 ["IV-α 曲目", status.get("iv_alpha", "-")],
                 ["最新版本", status.get("latest_release") or "-"],
-                ["曲库文件", status.get("path") or "(未落盘)"],
-                ["Songlist 源", status.get("source_json") or "(无)"],
+                ["曲库文件", _display_path(status.get("path", "")) or "(未落盘)"],
+                ["Songlist 源", _display_path(status.get("source_json", "")) or "(无)"],
             ],
         )
         if status.get("warning"):
@@ -451,7 +466,7 @@ def cmd_library(args) -> None:
         for note in stats.get("notes") or []:
             ui.info(note)
         if stats.get("path"):
-            ui.info(f"写入: {stats['path']}")
+            ui.info(f"写入: {_display_path(stats['path'])}")
             ui.info("已在当前进程生效；下次启动会自动读这份库。")
         else:
             ui.warn("没能落盘，当前只是在内存里生效；下次启动要重新 update。"
@@ -460,10 +475,10 @@ def cmd_library(args) -> None:
 
     if args[0] in ("source", "path"):
         if len(args) < 2:
-            ui.info(f"Songlist.json 位置: {library.source_path()}")
+            ui.info(f"Songlist.json 位置: {_display_path(library.source_path())}")
             return
         store.set_library_path(" ".join(args[1:]))
-        ui.ok(f"已保存 Songlist.json 位置: {library.source_path()}")
+        ui.ok(f"已保存 Songlist.json 位置: {_display_path(library.source_path())}")
         return
 
     ui.warn("用法: library | library update [--local] | library source <路径>")
