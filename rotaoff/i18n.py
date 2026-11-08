@@ -31,3 +31,16 @@ def t(key: str, locale: str = DEFAULT_LOCALE, **kwargs) -> str:
         return text.format(**kwargs)
     except (KeyError, IndexError):
         return text
+
+
+def help_block(topic: str, locale: str = DEFAULT_LOCALE) -> str:
+    """帮助文本：JSON 里存成字符串数组，这里拼成多行；缺键返回空串。"""
+    _load()
+    key = f"help-{topic}"
+    for name in (str(locale), DEFAULT_LOCALE):
+        value = (LOCALES.get(name) or {}).get(key)
+        if isinstance(value, list):
+            return "\n".join(str(line) for line in value)
+        if isinstance(value, str):
+            return value
+    return ""

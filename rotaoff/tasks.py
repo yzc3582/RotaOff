@@ -339,8 +339,7 @@ def build_task(kind: str, name: str = "", profile: str = "", **fields) -> dict:
 
     task = {"name": name or kind, "type": kind, "profile": profile}
     if fields.get("export") is not None:
-        chosen = [str(item).lower() for item in fields["export"]]
-        task["export"] = [item for item in chosen if item in output.EXPORT_FORMATS]
+        task["export"] = output.normalize_formats(fields["export"])
     if fields.get("image") is not None:
         task["image"] = bool(fields["image"])
     if fields.get("strict") is not None:

@@ -5,6 +5,7 @@
 
 import json
 import os
+import re
 import shutil
 from datetime import datetime
 
@@ -13,6 +14,43 @@ from .paths import BASE_DIR
 from .store import RotaOffError, load_config, save_config, t
 
 EXPORT_FORMATS = ("txt", "md", "csv", "json")
+
+# 格式后面的括号是「写文件 / 打印」两个开关：
+#   txt        = txt()  = txt(w)   只写文件（默认）
+#   txt(p)                         只打印，不写文件
+#   txt(wp)    = txt(pw)           写完再打印一遍
+_FORMAT_RE = re.compile(r"^([a-z]+)(?:\(([wp]*)\))?$")
+
+
+def split_format(item) -> tuple:
+    """`'md(p)'` -> `('md', False, True)`；返回 (格式, 是否写文件, 是否打印)。"""
+    match = _FORMAT_RE.match(str(item).strip().lower())
+    if not match:
+        return "", False, False
+    fmt, flags = match.group(1), match.group(2)
+    if not flags:                      # 没有括号 / 空括号 == 只写
+        return fmt, True, False
+    return fmt, "w" in flags, "p" in flags
+
+
+def format_token(fmt: str, write: bool, want_print: bool) -> str:
+    """把两个开关还原成用户写法，用于去重与回显。"""
+    if write and want_print:
+        return f"{fmt}(wp)"
+    return f"{fmt}(p)" if want_print else fmt
+
+
+def normalize_formats(items) -> list:
+    """过滤掉不认识的格式，保留 `(p)` / `(wp)` 标记并去重（顺序不变）。"""
+    result = []
+    for item in items or []:
+        fmt, write, want_print = split_format(item)
+        if fmt not in EXPORT_FORMATS or not (write or want_print):
+            continue
+        token = format_token(fmt, write, want_print)
+        if token not in result:
+            result.append(token)
+    return result
 
 # 全部可在 TUI 里改并写回 data/tasks.json 的 output 段
 DEFAULT_OUTPUT = {
@@ -29,8 +67,7 @@ def output_settings() -> dict:
     custom = load_config().get("output")
     if isinstance(custom, dict):
         settings.update(custom)
-    formats = [str(item).lower() for item in settings.get("export") or []]
-    settings["export"] = [item for item in formats if item in EXPORT_FORMATS]
+    settings["export"] = normalize_formats(settings.get("export"))
     return settings
 
 
@@ -112,26 +149,30 @@ def export_result(result: dict, formats=None, settings: dict | None = None) -> l
     settings = settings or output_settings()
     if formats is None:
         formats = settings.get("export") or []
-    formats = [str(fmt).lower() for fmt in formats if str(fmt).lower() in EXPORT_FORMATS]
+    formats = normalize_formats(formats)
     if not formats:
         return []
 
     out_dir = resolve_output_dir(settings.get("dir"))
-    os.makedirs(out_dir, exist_ok=True)
     stem = render_name(settings.get("template", "{type}-{stamp}"), result)
     latest = settings.get("latest") or ""
     files = []
 
-    for fmt in dict.fromkeys(formats):
+    for token in formats:
+        fmt, write, want_print = split_format(token)
         text = export_text(result, fmt)
-        encoding = "utf-8-sig" if fmt == "csv" else "utf-8"
-        path = os.path.join(out_dir, f"{stem}.{fmt}")
-        atomic_write(path, text, encoding)
-        files.append(path)
-        if latest:
-            stable = os.path.join(out_dir, f"{render_name(latest, result)}.{fmt}")
-            atomic_write(stable, text, encoding)
-            files.append(stable)
+        if write:
+            os.makedirs(out_dir, exist_ok=True)
+            encoding = "utf-8-sig" if fmt == "csv" else "utf-8"
+            path = os.path.join(out_dir, f"{stem}.{fmt}")
+            atomic_write(path, text, encoding)
+            files.append(path)
+            if latest:
+                stable = os.path.join(out_dir, f"{render_name(latest, result)}.{fmt}")
+                atomic_write(stable, text, encoding)
+                files.append(stable)
+        if want_print:                       # `txt(p)` / `txt(wp)`
+            print(text.rstrip("\n"))
     return files
 
 

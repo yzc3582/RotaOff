@@ -1,0 +1,30 @@
+# BREAK_STATE
+- 状态：PAUSED
+- 更新时间：2026-11-08
+- 任务目标：RotaOff 的 TUI 命令重组收尾（分组子命令 + query/tasks 别名 + 导出 (p)/(w) 标志），不回归 `update` / 快照 diff 行为
+- 当前进度：拆分出的 `rotaoff/tui_*.py` 已可通过 import 与 pyright；帮助文本中英文键名与组名已对齐；`tasks` 改为 `task` 的纯别名，`cmd_tasks` 已收成内部 `_list_tasks()`
+- 已完成：
+  - `tui.py` 从 185 行瘦到 118 行，只剩 docstring / import / COMMANDS / MOVED_COMMANDS / dispatch / main；空段头与失效 import 清掉
+  - `rotaoff/tui_query.py`：`QUERY_COMMANDS` + `cmd_query` 移到文件末尾（避免前向引用），`help_text("query")` 修正
+  - 组名统一为 `query`，别名 `rotaeno` / `rtr` / `r`；`task` 别名 `tasks`；`library` 别名 `db`
+  - i18n：`help-rotaeno` → `help-query`（中英各一处 + 引用它的行），总览补「别名」行，`help-profile` 里裸 `login` 改为 `profile login`
+  - 冒烟通过：`dispatch(['b40'])` 出「已移到 r b40」提示，`help query` 出完整帮助，`output ls` 正常出表（export=txt,md，template={type}-{stamp}）
+  - 辅助脚本：`.scratch/scan_sections.py`（找空段头）、`.scratch/drop_dead_sections.py`（删空段头 + 压下多余空行）
+- 未完成：
+  - `docs/py-all-in-one.en_US.md` 仍缺：`output reset`、不再有 `default` 模板魔法、`txt(p)` / `txt(wp)` 导出标志
+  - `README.md` / `README.zh_CN.md` 的命令分组表尚未同步（含 query/tasks 别名、`output ls|set|reset`）
+  - `MEMORY.md` 未记录本轮「常量表必须放函数之后」的教训
+  - `TextIO.reconfigure` 那条 pyright 告警是既有问题，未处理
+- 下一步动作：改 `docs/py-all-in-one.en_US.md` 的输出设置段落（`output reset <key>`、`(p)`/`(w)` 语义），再同步两份 README 的命令表，最后补 `MEMORY.md` 一条
+- 关键文件/路径：`tui.py`、`rotaoff/tui_common.py`、`tui_help.py`、`tui_profile.py`、`tui_query.py`、`tui_task.py`、`tui_output.py`、`tui_library.py`、`data/i18n/zh-CN.json`、`data/i18n/en-US.json`、`docs/py-all-in-one.en_US.md`、`MaterialsForAI/BREAK.md`（BREAK/RESUME 规程）
+- 关键命令：
+  - `.venv\Scripts\python -c "import tui;print(tui.help_text())"`
+  - `.venv\Scripts\python .scratch\scan_sections.py`
+  - `pyright rotaoff\tui_*.py tui.py`
+  - `.venv\Scripts\python tui.py`（用户手动跑，验证真实 b40 / update）
+- 变量/配置：全局 `output` 设置当前为 `dir=output`、`image=off`、`export=txt,md`、`template={type}-{stamp}`、`latest=(空)`；`CLEAR` 是状态而非标志，显示为 `AP(C)` / `AP(-)`
+- 风险与待确认：
+  - `r b40` 真实落盘文件名、两次 `update` 的差异输出仍未做真机验证（需要用户跑，我这边不联网）
+  - `tasks` 别名与「去掉未广告的裸命令」原则略有张力，已按用户明确要求保留
+  - 文档与帮助文案需同步，否则用户可见文案不一致
+- 复工指令：RESUME

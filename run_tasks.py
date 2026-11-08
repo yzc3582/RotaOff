@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--interval", type=int, metavar="秒",
                         help="循环间隔；不填则用配置里的 schedule.interval，0 = 只跑一次")
     parser.add_argument("--save", metavar="格式",
-                        help="覆盖导出格式，例如 txt,md,csv,json")
+                        help="覆盖导出格式，例如 txt,md,csv,json；off = 不导出")
     parser.add_argument("--image", dest="image", action="store_true", default=None,
                         help="强制生成图片")
     parser.add_argument("--no-image", dest="image", action="store_false",
@@ -126,7 +126,10 @@ def main(argv=None) -> int:
     lock.acquire("automation", force=args.force)
 
     if args.save is not None:
-        args.save = [item for item in args.save.replace(" ", ",").split(",") if item]
+        if args.save.strip().lower() in ("off", "none", "null", "-"):
+            args.save = []                      # 明确表达「不导出」，不靠非法格式被过滤
+        else:
+            args.save = [item for item in args.save.replace(" ", ",").split(",") if item]
 
     ops = getattr(args, "selection_ops", None) or []
     selected = select.apply_selection(all_tasks, ops)

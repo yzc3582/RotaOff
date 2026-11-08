@@ -1,0 +1,31 @@
+RotaOff 帮助
+
+基本命令：
+	help - 显示此帮助信息
+	quit - 退出程序
+
+子命令：
+	profile - 账号相关功能
+	rotaeno/rtr/r/query - 查询相关功能
+	task - 任务……
+	output - ……
+	library/db - 数据库功能
+
+不带参数地执行子命令/带 help：
+显示子命令的相关帮助
+
+RotaOff> profile
+RotaOff profile 帮助
+
+基本命令：
+	list/ls - 查看所有配置与当前配置
+	use <名称> - （同你的帮助）
+	……
+	login [cn|global] - ……
+
+---
+
+另外的微调：
+查询统一归类变为rotaeno/rtr/r/query下的子命令
+原来的rtr -> r search
+tasks -> task list/ls

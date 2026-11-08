@@ -86,11 +86,15 @@ Output:
 | Command | Meaning |
 | --- | --- |
 | `output` | show output settings |
-| `output set export txt,md` | default export formats (empty = print only) |
+| `output set export txt,md` | default export formats (`off` = print only) |
 | `output set template <tmpl>` | filename template; `{type}` `{name}` `{profile}` `{stamp}` |
-| `output set latest <tmpl>` | extra copy under a fixed name, handy for OBS |
+| `output set latest <tmpl>` | extra copy under a fixed name, handy for OBS (`off` = none) |
 | `output set dir <dir>` | output directory |
-| `output set image on\|off` | render images (default `off`) |
+| `output set image on\|off` | render images (default `off`); any other value is rejected |
+
+`off` / `null` / `none` / `-` switch a setting off wherever that makes sense. A task's own
+`export` / `template` / `image` wins over the global setting; a task created without them
+follows the global ones.
 
 Other:
 
