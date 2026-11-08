@@ -15,8 +15,9 @@ output/
 # rotaeno 运行时的缓存存档
 rotaeno/saves/
 
-# 曲库与运行期缓存：内容来自 wiki，版权归原作者，不入库（避免二次分发）
-# 这些文件都能用 `library update` / 首次运行自动重建
+# 曲库与运行期缓存：一部分内容来自 wiki，版权归原作者，不入库（避免二次分发）；
+# 这些文件都能用 `library update` / 首次运行自动重建。
+# 另一部分内容是本地存档，属于重要凭据，绝不能上传。
 [sS]onglist.json
 data/song_data.db
 data/song_data.db.tmp
@@ -24,6 +25,7 @@ data/player_data.db
 data/retired_songs.db
 data/saves/
 data/temp/
+output/
 
 # 存档里对不上本地曲库的记录：由查询自动重建，且反映某个账号的存档内容
 data/library_gaps.json
