@@ -279,6 +279,12 @@ pyright rotaoff\data.py rotaoff\tasks.py rotaoff\patch.py rotaoff\ui.py rotaoff\
 
 - i18n：`zh-CN.json` 与 `en-US.json` 键集合一致（39 条），缺键会依次回退到 `zh-CN` → 原始 key。
 - 导出：`txt` / `md` / `csv` / `json` 与 `latest` 固定名副本都测过，CJK 表格宽度对齐正常。
+- **文件名模板的优先级（2026-11-08 修）**：`output set template` 写的是 `data/tasks.json` 的
+  `output.template`；`run_task()` 会用**任务自带的** `template` 覆盖它。TUI 的即时命令曾经各自硬编码
+  （`template="b40"` / `"song"` / `"status"` / `"rtr"` / `"custom"`），于是 txt/md 永远叫 `b40.txt`，
+  改设置毫无效果；图片走 `save_image()`（前缀 `b40-{profile}` + 时间戳），不吃这个设置，看起来反而"正常"。
+  修法：即时命令**不传** `template`，模板只来自全局设置；任务里显式填的模板仍覆盖（那是用户自己填的）。
+  以后新增命令也别再传，否则同一个 bug 会复现。
 
 ## 还没做的（下次从这里继续）
 

@@ -219,20 +219,21 @@ def cmd_login(args) -> None:
 # ---------------------------------------------------------------- 即时查询
 
 def cmd_b40(args) -> None:
-    _run(tasks.build_task("b40", name="Best40", template="b40"))
+    # 不要在这里传 template：文件名模板统一由 `output set template` 决定，
+    # 传了会覆盖全局设置，导致 txt/md 永远叫 b40.txt。
+    _run(tasks.build_task("b40", name="Best40"))
 
 
 def cmd_song(args) -> None:
     alias = " ".join(args).strip()
     if not alias:
         raise RotaOffError("用法: song <曲名或别名>")
-    _run(tasks.build_task("song_info", name=alias, song_alias=alias, template="song"))
+    _run(tasks.build_task("song_info", name=alias, song_alias=alias))
 
 
 def cmd_status(args) -> None:
     status = (args[0] if args else "FC").upper()
-    _run(tasks.build_task("song_status", name=f"状态 {status}", status=status,
-                          template="status"))
+    _run(tasks.build_task("song_status", name=f"状态 {status}", status=status))
 
 
 def cmd_rtr(args) -> None:
@@ -245,7 +246,6 @@ def cmd_rtr(args) -> None:
         level_min=args[0],
         level_max=args[1],
         sort=sort,
-        template="rtr",
     ))
 
 
@@ -265,7 +265,7 @@ def cmd_update(args) -> None:
 
 def cmd_custom(args) -> None:
     fields = [item.lower() for item in args] or ["rating"]
-    _run(tasks.build_task("custom", name="自定义", fields=fields, template="custom"))
+    _run(tasks.build_task("custom", name="自定义", fields=fields))
 
 
 # ---------------------------------------------------------------- 任务

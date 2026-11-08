@@ -43,6 +43,12 @@
 - 我们不分发这些内容：程序在运行时向该站请求，或由用户自行保存到本地。
 - 若你**另行分发**由这些数据派生的成果（例如自己重建的 `song_data.db`），
   那份成果需沿用 CC BY-NC-SA 3.0 并保留出处；此项要求**不适用于本项目代码**。
+- **两份 `retired_songs.db` 不要混淆**：`rotaeno/database/retired_songs.db` 是**种子**，
+  由本项目把 wiki「限时上架曲目列表」清洗成表后生成，内容按 CC BY-NC-SA 3.0 提供，
+  出处标注在 `rotaeno/database/retired_songs.py` 顶部；`data/retired_songs.db` 是本机
+  运行时生成并刷新的副本，已在 `.gitignore` 中，**不随仓库分发**。种子入库沿用上游的目录惯例
+  （每个 Python 查询器配一个基本不更新的同名 db，如 `song_data.py` + `song_data.db`），
+  与「是否方便离线使用」无关；所以曲库类数据（`Songlist.json`、`data/song_data.db`）仍然一律不入库。
 
 ## 4. 游戏内容与图像素材
 
