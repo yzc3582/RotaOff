@@ -46,16 +46,16 @@ Account:
 | `profile set server cn\|global` | set the server |
 | `profile set objectid <ID>` | set `objectID` |
 | `profile set session <TOKEN>` | set `sessionToken` |
-| `login [cn\|global]` | scan the TapTap QR code and fill in the three settings above |
+| `profile login [cn\|global]` | scan the TapTap QR code and fill in the three settings above |
 
-Queries (results are printed unless `output` export is enabled):
+Queries (group `query`; the aliases `rotaeno` / `rtr` / `r` are the same group, e.g. `r b40`). Results are printed unless `output` export is enabled:
 
 | Command | Meaning |
 | --- | --- |
 | `b40` | Best40 table (retired songs excluded automatically; backed by `data/retired_songs.db`, refreshed by `library update`) |
 | `song <title or alias>` | per-difficulty rating of one song |
 | `status [FC\|AP\|APP\|CLEAR\|...]` | list charts by play status |
-| `rtr <min> <max> [sort]` | level range; sort = `rating` / `score` / `level` |
+| `search <min> [max] [sort]` | level range; sort = `rating` / `score` / `level` (this was the old top-level `rtr`) |
 | `custom [fields...]` | custom fields, e.g. `custom username rating level completion` |
 | `update` / `refresh` | download the cloud save once and report Rating / per-chart changes since the previous snapshot |
 
@@ -70,29 +70,33 @@ Snapshot and change fields (usable through `custom`, `task add`, and `update`):
 
 Every query still downloads the save in real time. A successful download overwrites `data/saves/<profile>.json` (`playerInfo + songDatas + fetchedAt`, latest copy only); a failed download never overwrites it. Status suffixes: `(C)` = cleared, `(-)` = not cleared, so `NONE(-)` means never played / not cleared and `AP(-)` is possible historical dirty data.
 
-Change reporting: `tui.py` appends one summary line after `b40` / `custom` when the save changed (e.g. `云存档有变化：Rating 14.7025+0.0094，2 个谱面有变化`); `update` reports the full detail itself and skips that line. `run_tasks.py` sends change summaries, round messages, failures and warnings to **stderr**, keeping stdout for result data only. `song` / `status` / `rtr` do not run the snapshot diff yet.
+Change reporting: `tui.py` appends one summary line after `b40` / `custom` when the save changed (e.g. `云存档有变化：Rating 14.7025+0.0094，2 个谱面有变化`); `update` reports the full detail itself and skips that line. `run_tasks.py` sends change summaries, round messages, failures and warnings to **stderr**, keeping stdout for result data only. `song` / `status` / `search` do not run the snapshot diff yet.
 
 Tasks (stored in `data/tasks.json`, can be run by `run_tasks.py`):
 
 | Command | Meaning |
 | --- | --- |
-| `tasks` | list tasks |
+| `task` / `task ls` | list tasks (`tasks` is an alias of `task`) |
 | `task add` | guided task creation |
 | `task rm <index>` | delete a task |
 | `task run [index\|all]` | run tasks |
+| `task interval <seconds>` | save the automation loop interval, `0` = run once |
 
 Output:
 
 | Command | Meaning |
 | --- | --- |
-| `output` | show output settings |
+| `output` / `output ls` | show output settings |
 | `output set export txt,md` | default export formats (`off` = print only) |
 | `output set template <tmpl>` | filename template; `{type}` `{name}` `{profile}` `{stamp}` |
 | `output set latest <tmpl>` | extra copy under a fixed name, handy for OBS (`off` = none) |
 | `output set dir <dir>` | output directory |
 | `output set image on\|off` | render images (default `off`); any other value is rejected |
+| `output reset <key>` | restore one key to its default (`output reset` alone lists them) |
 
-`off` / `null` / `none` / `-` switch a setting off wherever that makes sense. A task's own
+An export entry carries two switches in brackets: `txt` = write only (the default), `txt(p)` = print only, `txt(wp)` = write and then print. So `output set export txt(p),md` prints the txt and writes the md.
+
+`off` / `null` / `none` / `-` switch a setting off wherever that makes sense. There is no `default` keyword any more: use `output reset <key>`. A task's own
 `export` / `template` / `image` wins over the global setting; a task created without them
 follows the global ones.
 
@@ -104,8 +108,7 @@ Other:
 | `library update` | fetch `Template:Songlist.json` from the wiki (solves the Anubis proof-of-work) and rebuild `data/song_data.db` |
 | `library update --local` | rebuild from the local `Songlist.json` only (offline) |
 | `library source [path]` | show manual download links for both sources (no download), or point at another `Songlist.json` |
-| `interval <seconds>` | save the automation loop interval, `0` = run once |
-| `help` / `quit` | — |
+| `help [group]` / `quit` | — |
 
 > `library update` falls back in three steps: online fetch → local `Songlist.json` → the stale upstream db (with a warning that charts without a chart constant cannot be rated). Grab the json by hand from
 > <https://wiki.rotaeno.cn/index.php?title=Template:Songlist.json&action=raw> if fetching fails.

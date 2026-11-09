@@ -350,6 +350,16 @@ Rating 又会偏）。真正要做的只是两件记账的事：
 ① `NOTICE.md` 第 2 节那几行从「我们的修改」改述为「已随上游版本生效」；
 ② 将来整体同步 `rotaeno/` 覆盖目录时，**不用再记得重打这几处补丁**，也不会因此退回旧常数。
 
+
+**命令分组与帮助（2026-11-08 重构后）**：
+- 顶层只有组：`profile` / `query`（别名 `rotaeno` `rtr` `r`）/ `task`（别名 `tasks`）/ `output` / `library`（别名 `db`）/ `help`。
+- 子命令靠**传参逐层下传**：`tui.dispatch` 只查顶层表，`args[1:]` 原样给 `cmd_query`，再由 `QUERY_COMMANDS` 取 `args[0]`。
+  没有把 `query b40` 拍平成一张全局表；代价是 `MOVED_COMMANDS` 只能拦顶层旧名。
+- 帮助正文全在 `data/i18n/*.json` 的 `help-*` 键；`GROUPS` 是唯一真源，**错误提示里的可用主题列表走 `{topics}` 占位符**，
+  新增组不必再改两处 i18n。
+- `help` = `help rotaoff` = `help overview`（总览）；`help help` 是独立的 `help-help` 页；`<组名>`、`<组名> help`、`?` 等价。
+  未知主题**抛 `RotaOffError`**，不再「警告 + 悄悄回退总览」。
+- 常量表（`QUERY_COMMANDS` 等）引用同文件函数，必须**定义在函数之后**，否则 NameError；pyright 对此不报错。
 **别再记错**：`login` **是有扫码的**（`tui.py:193-204` 用 `taptap_auth.TapTapLogin` 出二维码并回填三项），
 不要再说「qrcode 没搬」。上游顶层命令只有 `login` / `b40` / `song` / `rtr` 四组，**没有 update**；
 文件里出现的 `update` 都是内部函数 `update_user_datas()`（`upstream_bot.py:65`，写 `users.json`）。

@@ -53,19 +53,20 @@ python -m venv .venv
 | --- | --- |
 | `profile` / `profile use <名>` / `profile new <名>` | 查看、切换、新建玩家配置 |
 | `profile set server cn\|global` | 换服务器（只支持国服/国际服；上游的 `private` 是半成品，本项目不支持） |
-| `login [cn\|global]` | 扫码登录 TapTap |
-| `b40` | Best40 表格（自动排除已下架曲目） |
-| `song <曲名或别名>` | 单曲各难度 Rating |
-| `status [FC\|AP\|APP\|...]` | 按成绩状态列曲目 |
-| `rtr <下限> [上限] [排序]` | 指定定数区间，排序 = rating/score/level |
-| `custom [字段...]` | 自定义字段，如 `custom username rating level` |
-| `update` / `refresh` | 单独下载一次云存档，报告 Rating 与单谱成绩相对上一份的变化 |
-| `tasks` / `task add` / `task rm <序号>` / `task run [选择]` | 任务管理 |
-| `output` / `output set <项> <值>` | 输出设置（目录、导出格式、文件名模板、图片开关） |
+| `profile login [cn\|global]` | 扫码登录 TapTap（原来是顶层的 `login`） |
+| `query b40`（或 `r b40`） | Best40 表格（自动排除已下架曲目） |
+| `query song <曲名或别名>` | 单曲各难度 Rating |
+| `query status [FC\|AP\|APP\|...]` | 按成绩状态列曲目 |
+| `query search <下限> [上限] [排序]` | 指定定数区间，排序 = rating/score/level（原来是 `rtr`） |
+| `query custom [字段...]` | 自定义字段，如 `custom username rating level` |
+| `query update` / `refresh` | 单独下载一次云存档，报告 Rating 与单谱成绩相对上一份的变化 |
+| `task ls` / `task add` / `task rm <序号>` / `task run [选择]` | 任务管理（写 `tasks` 也认） |
+| `task interval <秒>` | 自动化间隔，0 = 只跑一次 |
+| `output` / `output set <项> <值>` / `output reset <项>` | 输出设置（目录、导出格式、文件名模板、图片开关） |
 | `library` / `library update [--local]` / `library source <路径>` | 曲库：看用的哪份、联网或离线重建、换源 |
-| `interval <秒>` | 自动化间隔，0 = 只跑一次 |
-| `save` | 立刻导出当前结果 |
-| `help` / `quit` | —— |
+| `help [组名]` / `quit` | —— |
+
+组别名：`query` = `rotaeno` = `rtr` = `r`；`task` = `tasks`；`library` = `db`。旧的顶层写法（`b40`、`song`、`status`、`custom`、`update`、`login`、`interval`、`save`）会提示对应的新子命令。
 
 ## 自动化
 

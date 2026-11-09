@@ -53,19 +53,20 @@ Three steps:
 | --- | --- |
 | `profile` / `profile use <name>` / `profile new <name>` | list, switch, create player profiles |
 | `profile set server cn\|global` | switch server (cn / global only; upstream's `private` was never implemented) |
-| `login [cn\|global]` | scan-to-login for TapTap |
-| `b40` | Best40 table (retired songs excluded automatically) |
-| `song <title or alias>` | per-difficulty Rating of one song |
-| `status [FC\|AP\|APP\|...]` | list charts by play status |
-| `rtr <min> [max] [sort]` | level range, sort = rating/score/level |
-| `custom [fields...]` | custom fields, e.g. `custom username rating level` |
-| `update` / `refresh` | download the cloud save once and report Rating / per-chart changes since the previous snapshot |
-| `tasks` / `task add` / `task rm <index>` / `task run [selection]` | task management |
-| `output` / `output set <key> <value>` | output settings (dir, export formats, filename template, image toggle) |
+| `profile login [cn\|global]` | scan-to-login for TapTap (used to be a top-level `login`) |
+| `query b40` (or `r b40`) | Best40 table (retired songs excluded automatically) |
+| `query song <title or alias>` | per-difficulty Rating of one song |
+| `query status [FC\|AP\|APP\|...]` | list charts by play status |
+| `query search <min> [max] [sort]` | level range, sort = rating/score/level (used to be `rtr`) |
+| `query custom [fields...]` | custom fields, e.g. `custom username rating level` |
+| `query update` / `refresh` | download the cloud save once and report Rating / per-chart changes since the previous snapshot |
+| `task ls` / `task add` / `task rm <index>` / `task run [selection]` | task management (`tasks` works too) |
+| `task interval <seconds>` | automation interval, 0 = run once |
+| `output` / `output set <key> <value>` / `output reset <key>` | output settings (dir, export formats, filename template, image toggle) |
 | `library` / `library update [--local]` / `library source <path>` | song library: inspect, rebuild online or offline, repoint the source |
-| `interval <seconds>` | automation interval, 0 = run once |
-| `save` | export the current result immediately |
-| `help` / `quit` | — |
+| `help [group]` / `quit` | — |
+
+Group aliases: `query` = `rotaeno` = `rtr` = `r`; `task` = `tasks`; `library` = `db`. Old top-level names (`b40`, `song`, `status`, `song_rtr`, `custom`, `update`, `login`, `interval`, `save`) print a hint pointing at the new subcommand.
 
 ## Automation
 

@@ -80,5 +80,5 @@ def cmd_query(args) -> None:
     action, rest = args[0].lower(), args[1:]
     handler = QUERY_COMMANDS.get(action)
     if handler is None:
-        raise RotaOffError(f"未知查询: {action}（help rotaeno 看看）")
+        raise RotaOffError(f"未知查询: {action}（help query 看看）")
     handler(rest)

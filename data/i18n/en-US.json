@@ -64,7 +64,7 @@
     "library-not-persisted": "Could not write to disk; this session only has it in memory. Fix the data/ write permission indicated above to persist it.",
     "library-source-saved": "Saved Songlist.json location: {path}",
     "library-usage": "Usage: library ls | library update [--local] | library source <path>",
-    "help-unknown-topic": "no such help topic: `{topic}` (available: profile / query / task / output / library)",
+    "help-unknown-topic": "no such help topic: `{topic}` (available: {topics})",
     "library-fetching-songlist": "Fetching Songlist.json from wiki.rotaeno.cn (Anubis proof-of-work first)…",
     "library-source-online": "Source: fetched from wiki ({stamp})",
     "library-source-online-failed": "Online fetch failed; falling back to the local file",
@@ -100,6 +100,7 @@
         "",
         "Basics",
         "  help [group]       show help; `help <group>` for one group only",
+        "  help help          how the help command itself works",
         "  quit               exit (Ctrl+C works too)",
         "",
         "Groups (a bare group name prints its help)",
@@ -110,6 +111,16 @@
         "  library / db       song library and retired-song list",
         "",
         "Aliases: query = rotaeno = rtr = r, task = tasks, library = db"
+    ],
+    "help-help": [
+        "RotaOff help",
+        "",
+        "  help                show the overview (the entry point of this project)",
+        "  help <group>        show one group's help; same as `<group>` and `<group> help`",
+        "  help help           show this page",
+        "  help overview       the project overview; same as help / help rotaoff",
+        "",
+        "Groups answer to aliases: query = rotaeno = rtr = r, task = tasks, library = db"
     ],
     "help-profile": [
         "RotaOff profile help",

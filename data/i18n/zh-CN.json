@@ -63,7 +63,7 @@
     "library-effective": "已在当前进程生效；下次启动会自动读这份库。",
     "library-not-persisted": "没能落盘，当前只是在内存里生效；下次启动要重新 update。按上面那条提示修好 data/ 的写权限就能持久化。",
     "library-source-saved": "已保存 Songlist.json 位置: {path}",
-    "help-unknown-topic": "没有这个帮助主题: `{topic}`（可用: profile / query / task / output / library）",
+    "help-unknown-topic": "没有这个帮助主题: `{topic}`（可用: {topics}）",
     "library-usage": "用法: library ls | library update [--local] | library source <路径>",
     "library-fetching-songlist": "正在从 wiki.rotaeno.cn 拉取 Songlist.json（需要先过 Anubis 反爬验证）…",
     "library-source-online": "来源：wiki 在线抓取（{stamp}）",
@@ -100,6 +100,7 @@
         "",
         "基本",
         "  help [组名]        显示帮助；只看某一组就 help <组名>",
+        "  help help          看 help 本身的用法",
         "  quit               退出（Ctrl+C 同效）",
         "",
         "分组（组名不带参数 = 看该组帮助）",
@@ -110,6 +111,16 @@
         "  library / db       曲库与下架曲名单",
         "",
         "别名：query = rotaeno = rtr = r，task = tasks，library = db"
+    ],
+    "help-help": [
+        "RotaOff help 帮助",
+        "",
+        "  help                显示全局帮助（本项目的入口说明）",
+        "  help <组名>         显示某一组的帮助，等价于 <组名> 和 <组名> help",
+        "  help help           显示本页",
+        "  help overview       项目总览，等价于 help / help rotaoff",
+        "",
+        "组名支持别名：query = rotaeno = rtr = r，task = tasks，library = db"
     ],
     "help-profile": [
         "RotaOff profile 帮助",
