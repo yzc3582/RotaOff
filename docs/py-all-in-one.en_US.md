@@ -92,7 +92,7 @@ Output:
 | `output set latest <tmpl>` | extra copy under a fixed name, handy for OBS (`off` = none) |
 | `output set dir <dir>` | output directory |
 | `output set image on\|off` | render images (default `off`); any other value is rejected |
-| `output reset <key>` | restore one key to its default (`output reset` alone lists them) |
+| `output reset <key>` | restore one key to its default (with no key it prints the usage line) |
 
 An export entry carries two switches in brackets: `txt` = write only (the default), `txt(p)` = print only, `txt(wp)` = write and then print. So `output set export txt(p),md` prints the txt and writes the md.
 

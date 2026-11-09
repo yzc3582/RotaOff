@@ -125,7 +125,8 @@
     "help-profile": [
         "RotaOff profile help",
         "",
-        "  profile                     show every profile and the active one",
+        "  profile                     show this page (profile help / help profile)",
+        "  profile ls                  show every profile and the active one",
         "  profile use <name>          switch the active profile",
         "  profile new <name>          create a profile and switch to it",
         "  profile set <field> <value> fields: server / serverCode / objectID /",
@@ -135,8 +136,9 @@
         "cn / global only; upstream's private server is a stub and is not supported."
     ],
     "help-query": [
-        "RotaOff query help (query / rotaeno / rtr / r are the same group)",
+        "RotaOff query help (aliases: rotaeno / rtr / r)",
         "",
+        "  query                       show this page (query help / help query)",
         "  b40                         Best40 table",
         "  song <title or alias>       rating of every difficulty of one song",
         "  status [value]              list charts by status; value can be:",
@@ -151,12 +153,14 @@
         "Results are printed in the terminal; use output set export or a task to write files."
     ],
     "help-task": [
-        "RotaOff task help",
+        "RotaOff task help (alias: tasks)",
         "",
-        "  task / task ls / tasks      list tasks",
+        "  task                        show this page (task help / help task)",
+        "  task ls                     list tasks",
         "  task add                    guided task creation",
         "  task rm <index>             delete a task",
         "  task run [index|all|1,3|4-6|name]   run tasks (same selection rules)",
+        "  task interval [seconds]     show or set the automation interval, 0 = run once",
         "",
         "Tasks live in data/tasks.json and can also run unattended via run_tasks.py.",
         "A task's own export / template / image wins; unset ones follow output."
@@ -164,7 +168,8 @@
     "help-output": [
         "RotaOff output help",
         "",
-        "  output                      show output settings",
+        "  output                      show this page (output help / help output)",
+        "  output ls                   show output settings",
         "  output set export txt,md    default export formats; brackets are write/print flags:",
         "                                txt        write the file only (default)",
         "                                txt(p)     print only, no file",
@@ -181,7 +186,8 @@
     "help-library": [
         "RotaOff library help (db is an alias)",
         "",
-        "  library / library show      current source, songs, charts, IV-alpha, retired list",
+        "  library                     show this page (library help / help library)",
+        "  library ls                  current source, songs, charts, IV-alpha, retired list",
         "  library update [--local]    fetch Songlist.json from the wiki and rebuild data/song_data.db",
         "                              --local uses the local file only (no network)",
         "  library source [path]       point at another Songlist.json; no path = show both source links",
