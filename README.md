@@ -91,6 +91,7 @@ Shape of `data/tasks.json`:
     "output": {
         "dir": "output",
         "image": false,
+        "completion": false,
         "export": [],
         "template": "{type}-{stamp}",
         "latest": ""
@@ -105,6 +106,10 @@ Shape of `data/tasks.json`:
 - `output.export` — empty means print only; any of `txt` / `md` / `csv` / `json`, multiple allowed
 - `output.template` — filename template, placeholders: `{type}` `{name}` `{profile}` `{stamp}`
 - `output.latest` — e.g. `"{type}-latest"` writes an extra copy under a fixed name so OBS can keep reading one file (writes go to `.tmp` then `os.replace`, so a half-written file is never visible)
+- `output.completion` — whether to print Completion, default `false` (hidden). The cloud save has no
+  unlock/ownership flag, so songs played during an event but never unlocked are counted in and the
+  value skews high; accounts that own the whole library usually match the game. Full story in
+  [docs/completion.en_US.md](docs/completion.en_US.md)
 - `tasks[].profile` — which player profile to use; omit to use the active one
 - `tasks[].export` / `image` / `template` / `limit` / `strict` — per-task overrides of the global settings
 

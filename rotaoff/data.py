@@ -20,7 +20,7 @@ import requests
 
 import rotaeno
 
-from . import patch, retired
+from . import completion, patch, retired
 from .paths import LIBRARY_GAPS_FILE, SAVES_DIR
 from .store import RotaOffError, active_profile_name, require_ready_profile
 
@@ -31,7 +31,7 @@ CUSTOM_LABELS = {
     "rating": "Rating",
     "level": "等级",
     "exp": "EXP",
-    "completion": "完成度",
+    "completion": "完成度（可能有偏差）",
     "app": "APP",
     "ap": "AP",
     "fc": "FC",
@@ -489,30 +489,20 @@ def charts_without_diff(song_datas: list) -> list:
     return [item for item in song_datas if not item.get("diff")]
 
 
-def total_chart_count() -> int:
-    """本地曲库里的谱面总数，用来算完成度（只查一次，进程内缓存）。"""
-    cached = getattr(total_chart_count, "cached", None)
-    if cached is None:
-        songs = rotaeno.database.song_data.song_data.get_songs_rating_real_range(0, 9999)
-        cached = sum(len(song["levels"]) for song in songs)
-        setattr(total_chart_count, "cached", cached)
-    return cached
-
-
 def metrics_from(snapshot: dict) -> dict:
     """把 playerInfo 里能单独拿出来用的数值整理成扁平字典。"""
     info = snapshot.get("playerInfo") or {}
     records = info.get("playRecords") or {}
     diff = snapshot.get("diff") or {}
-    played = len(snapshot.get("songDatas") or [])
-    total = total_chart_count()
-    percent = played / total * 100 if total else 0.0
+    raw = snapshot.get("songDatas") or []
+    played = len(raw)
+    counted, _ = exclude_retired(raw)            # 下架曲不参与 Completion
     return {
         "username": str(info.get("displayName") or NO_DATA),
         "rating": f'{info.get("rating", 0):.4f}',
         "level": f'{info.get("level", 0):.2f}',
         "exp": f'{info.get("exp", 0):,}',
-        "completion": f"{played}/{total} ({percent:.1f}%)",
+        "completion": completion.format_completion(counted),
         "app": str(records.get("TotalApp", 0)),
         "ap": str(records.get("TotalAp", 0)),
         "fc": str(records.get("TotalFc", 0)),
@@ -525,14 +515,21 @@ def metrics_from(snapshot: dict) -> dict:
     }
 
 
-def profile_summary(snapshot: dict) -> list:
-    """b40 图片最上面那两行：Rating / 等级 / 完成度。"""
+def profile_summary(snapshot: dict, show_completion: bool = False) -> list:
+    """b40 图片最上面那两行：Rating / 等级。
+
+    完成度默认不显示：数值有已知偏差，只有 `output set completion on` 时才带上
+    （见 docs/completion.zh_CN.md 或 docs/completion.en_US.md）。
+    """
     info = snapshot.get("playerInfo") or {}
     values = metrics_from(snapshot)
+    second = f'APP {values["app"]}  AP {values["ap"]}  FC {values["fc"]}'
+    if show_completion:
+        second += f'  |  完成度（可能有偏差） {values["completion"]}'
+    second += f'  |  时长 {values["playtime"]}'
     return [
         f'{values["username"]}  |  Rating {values["rating"]}  |  Lv.{values["level"]}',
-        f'APP {values["app"]}  AP {values["ap"]}  FC {values["fc"]}  |  '
-        f'完成度 {values["completion"]}  |  时长 {values["playtime"]}',
+        second,
     ]
 
 

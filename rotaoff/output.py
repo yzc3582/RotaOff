@@ -56,6 +56,7 @@ def normalize_formats(items) -> list:
 DEFAULT_OUTPUT = {
     "dir": "output",
     "image": False,                  # 图片默认关闭，只出文本
+    "completion": False,             # 完成度有已知偏差，默认不输出；要看得显式打开
     "export": [],                    # 例如 ["txt", "md"]，空表示只打印
     "template": "{type}-{stamp}",    # 可用 {type} {name} {profile} {stamp}
     "latest": "",                     # 比如 "{type}-latest"，留空则不生成固定名副本

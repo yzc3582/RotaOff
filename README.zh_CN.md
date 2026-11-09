@@ -91,6 +91,7 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
     "output": {
         "dir": "output",
         "image": false,
+        "completion": false,
         "export": [],
         "template": "{type}-{stamp}",
         "latest": ""
@@ -105,6 +106,7 @@ python run_tasks.py --save txt,md --image       :: 临时改导出格式 / 开�
 - `output.export` —— 留空只打印；可选 `txt` / `md` / `csv` / `json`，可多选
 - `output.template` —— 文件名模板，可用 `{type}` `{name}` `{profile}` `{stamp}`
 - `output.latest` —— 比如 `"{type}-latest"`，额外写一份固定名字的副本，方便 OBS 一直读同一个文件（写入是先写 `.tmp` 再 `os.replace`，不会读到半截）
+- `output.completion` —— 是否输出完成度，默认 `false`（即隐藏）。云存档里没有「是否解锁」字段，活动期打过但没解锁的曲子会被多算，数值偏高；已解锁全部曲目的账号通常与游戏一致。来龙去脉见 `docs/completion.zh_CN.md`
 - `tasks[].profile` —— 用哪个玩家配置，省略则用当前的
 - `tasks[].export` / `image` / `template` / `limit` / `strict` —— 按任务覆盖全局设置
 

@@ -12,8 +12,12 @@
 - 设计目标：无 Discord、无 asyncio、任务可保存、可交给 `run_tasks.py` 自动跑。
 - 入口：`tui.py`（交互）、`run_tasks.py`（自动化）、`bot.py`（3 行启动器，等同 `tui.py`）。
 - 文档：`README.md`（英文）/ `README.zh_CN.md` 在根目录；`docs/` 下放 `filter.zh_CN.md` /
-  `filter.en_US.md`、`filter.yzc3582.fake.cpp`（选择语义的原始伪代码）、`py-all-in-one.en_US.md`（英文提示汇总）。
+  `filter.en_US.md`、`filter.yzc3582.fake.cpp`（选择语义的原始伪代码）、`py-all-in-one.en_US.md`（英文提示汇总）、
+  `completion.zh_CN.md` / `completion.en_US.md`（完成度算法与放弃的修复记录）。
   `AGENTS.md` 是工具固定读取的文件名，不套 `*.zh_CN.md` 规则。
+- **`docs/` 下任何新增文档都必须成对出现**：`xxx.en_US.md` + `xxx.zh_CN.md`，两边的章节结构与结论
+  必须一致，各自被对应语言的 README 链接。只写一份中文就等着被作者骂（2026-11-09 已发生一次：
+  `completion.md` 先写成了单语）。`MEMORY.md` / `AGENTS.md` / 交接文档这类给 AI 看的内部文件例外。
 - **文档面向所有人**：不写「我的账号」「你现在是 2.99」这种把某次测试当普适事实的说法，
   需要举例就写「yzc3582（人类方作者）当时测试的版本是 2.99」。任何人 clone 下来都应该能照着跑。
 - **同步规则**：`docs/py-all-in-one.en_US.md` 是英文提示的唯一汇总。任何新增或修改的用户可见文案
@@ -120,7 +124,12 @@
 
 ## 已确认的事实（别再猜）
 
-- `rotaeno.database.song_data` 的难度键只有 `I` / `II` / `III` / `IV` / `IV_Alpha`，没有 `IN`。
+- **路径别凭印象猜，先看 `rotaoff/paths.py`**（或 `from rotaoff import paths` 打印）：根目录没有 `config.json`。
+  - `paths.CONFIG_FILE` = `data/tasks.json` —— 配置（`profile` / `output` / `schedule` / `tasks`）都在这里，`output set` 改的就是它；
+  - `paths.USERS_FILE` = `data/users.json` —— 账号（`serverCode` / `objectID` / `sessionToken` / `locale`）；
+  - `data/saves/` 是快照，`data/` 下还有 `song_data.db`、`temp/`。三者都不入库。
+  2026-11-09 就因为猜成 `config.json` 白跑一条命令，还差点以为文件不存在是 bug。
+
 - `rotaeno/__init__.py` → `processor` → `utils`，而 `rotaeno/utils.py` 在**导入期**就 `from playwright.sync_api import ...` 且 `from PIL import Image`。
   ⇒ playwright、Pillow 是硬依赖；chromium 内核只在出图片时需要。
 - `rotaeno.processor.get_song_rtr` 的默认定数区间是 `(12.5, 1145)`，`1145` = 不设上限，也是原作者 None1145 的彩蛋。

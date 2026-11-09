@@ -90,6 +90,8 @@ def _task_custom(task: dict, render_image: bool) -> dict:
     unknown = [field for field in fields if field not in metrics and field != "b40"]
     if unknown:
         raise RotaOffError(t("custom-field-unknown", locale, field=", ".join(unknown)))
+    if "completion" in fields and not output.output_settings().get("completion"):
+        raise RotaOffError(t("completion-hidden", locale))
 
     layout = task.get("layout") or "{label}: {value}"
     summary = [
@@ -114,6 +116,9 @@ def _task_custom(task: dict, render_image: bool) -> dict:
             for field in fields
             if field in metrics
         ]
+
+    if "completion" in fields:            # 每次都提示，别让数字悄悄当真理
+        warnings = [t("completion-caveat", locale)] + warnings
 
     image = ""
     if render_image:
@@ -149,12 +154,15 @@ def _task_b40(task: dict, render_image: bool) -> dict:
             f"b40-{profile_name}",
         )
     ranked, warnings = _ranked(snapshot, task, locale)
+    show_completion = bool(output.output_settings().get("completion"))
+    if show_completion:
+        warnings = [t("completion-caveat", locale)] + warnings
     return {
         "title": "Best40",
         "columns": list(data.B40_COLUMNS),
         "rows": data.best40_rows(ranked),
         "aligns": list(data.B40_ALIGNS),
-        "summary": data.profile_summary(snapshot),
+        "summary": data.profile_summary(snapshot, show_completion),
         "profile": profile_name,
         "raw": snapshot,
         "image": image,

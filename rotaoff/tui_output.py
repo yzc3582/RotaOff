@@ -16,12 +16,12 @@ def _parse_setting(key: str, value: str):
     lowered = text.lower()
     off = not text or lowered in ("off", "null", "none", "-", "no", "false")
 
-    if key == "image":
+    if key in ("image", "completion"):
         if lowered in ("on", "yes", "y", "true", "1"):
             return True
         if off:
             return False
-        raise RotaOffError(f"image 只接受 on / off，收到: {text}")
+        raise RotaOffError(f"{key} 只接受 on / off，收到: {text}")
     if key == "export":
         if off:
             return []

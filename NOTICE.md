@@ -37,8 +37,9 @@
 
 ## 3. 数据来源：Rotaeno 中文维基
 
-- 曲目定数（`Template:Songlist.json`）、限时上架 / 下架曲目名单、Rating 规则说明均来自
-  <https://wiki.rotaeno.cn/>，**摘自 Rotaeno 中文维基**。
+- 曲目定数（`Template:Songlist.json`）、限时上架 / 下架曲目名单、Rating 规则说明、
+  **Completion（完成度）的公式与难度权重**（<https://wiki.rotaeno.cn/index.php?title=Completion>）
+  均来自 <https://wiki.rotaeno.cn/>，**摘自 Rotaeno 中文维基**。
 - 许可：**CC BY-NC-SA 3.0**。按该站要求，任何引用都须标注出处，未标注视为侵权。
 - 我们不分发这些内容：程序在运行时向该站请求，或由用户自行保存到本地。
 - 若你**另行分发**由这些数据派生的成果（例如自己重建的 `song_data.db`），

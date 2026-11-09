@@ -63,10 +63,17 @@ Snapshot and change fields (usable through `custom`, `task add`, and `update`):
 
 | Field | Meaning |
 | --- | --- |
+| `completion` | `current/theoretical (percent)`, e.g. `75.658/461 (16.412%)`; formula below |
 | `cloud_updated_at` | the CloudSave object's `updatedAt` — when the game synced the save to TapTap (converted to local time); the field that says whether data is fresh |
 | `fetched_at` | when this machine downloaded the save; changes on every run |
 | `rating_diff` | e.g. `14.7025+0.0094`; zero delta still prints `+0.0000`; the first record prints `首次记录，下次起可对比` |
 | `songs_diff` | e.g. `Title (IV): 1,001,551 → 1,006,012 (+4,461)｜13.7551 → 14.5020｜NONE(C) → AP(-)`; `无变化` when nothing moved |
+
+> **Completion** lives in `rotaoff/completion.py` (pure calculation, no network) and follows the wiki
+> 「Completion」page — CC BY-NC-SA 3.0, see `NOTICE.md` §3. Per chart:
+> `min(1, 0.925 · R/(D+3.6) + B_score + B_flag)`; a song takes the max of the weighted I–IV values
+> plus its IV-α value; the total sums over songs. The theoretical value is the number of counted
+> IV + IV-α charts (retired songs excluded, read from the local song library).
 
 Every query still downloads the save in real time. A successful download overwrites `data/saves/<profile>.json` (`playerInfo + songDatas + fetchedAt`, latest copy only); a failed download never overwrites it. Status suffixes: `(C)` = cleared, `(-)` = not cleared, so `NONE(-)` means never played / not cleared and `AP(-)` is possible historical dirty data.
 
@@ -92,6 +99,7 @@ Output:
 | `output set latest <tmpl>` | extra copy under a fixed name, handy for OBS (`off` = none) |
 | `output set dir <dir>` | output directory |
 | `output set image on\|off` | render images (default `off`); any other value is rejected |
+| `output set completion on\|off` | print Completion too (default `off`); the value has a known deviation, see [completion.en_US.md](completion.en_US.md) |
 | `output reset <key>` | restore one key to its default (with no key it prints the usage line) |
 
 An export entry carries two switches in brackets: `txt` = write only (the default), `txt(p)` = print only, `txt(wp)` = write and then print. So `output set export txt(p),md` prints the txt and writes the md.

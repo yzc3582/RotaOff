@@ -27,6 +27,8 @@
     "server-code-unsupported-for-query": "This server does not support direct queries: `{server_code}`",
     "output-field-invalid": "Unknown output setting: `{field}`",
     "custom-field-unknown": "Unknown field: `{field}`",
+    "completion-hidden": "Completion is hidden by default (known deviation): run `output set completion on` first",
+    "completion-caveat": "Completion is approximate: the cloud save has no unlock/ownership flag, so songs played during an event but never unlocked are counted in. Accounts that own the whole library usually match the game and can trust the number",
     "task-not-found": "Task not found: `{task}`",
     "task-added": "Task added: `{name}`",
     "task-removed": "Task removed: `{name}`",
@@ -179,6 +181,7 @@
         "  output set latest <tmpl>    extra fixed-name copy, handy for OBS (off = none)",
         "  output set dir <dir>        output directory",
         "  output set image on|off     render images (default off)",
+        "  output set completion on|off print Completion too (default off; the value has a known deviation)",
         "  output reset <key>          restore one setting to its default",
         "",
         "Tasks that leave export / template / image unset follow these values, including later changes."
